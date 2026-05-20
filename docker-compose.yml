@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: goodwork-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: goodwork_db
+      POSTGRES_USER: goodwork_admin
+      POSTGRES_PASSWORD: goodwork_secure_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/docker/init:/docker-entrypoint-initdb.d
+    networks:
+      - goodwork-network
+
+volumes:
+  postgres_data:
+
+networks:
+  goodwork-network:
+    driver: bridge
