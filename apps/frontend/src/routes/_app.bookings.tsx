@@ -2,35 +2,60 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Plus, ChevronLeft, ChevronRight, X, Clock, MapPin, Users } from "lucide-react";
-import { bookings as initial, rooms, type Booking } from "@/lib/mock-data";
+import { Plus, ChevronLeft, ChevronRight, X, Clock, MapPin, Users, Calendar } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getBookings, createBooking, cancelBooking, getRooms, type ApiBooking, type ApiRoom } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/bookings")({
   component: BookingsPage,
   head: () => ({ meta: [{ title: "Agendamentos — GOODWORK" }] }),
 });
 
-const hours = Array.from({ length: 11 }, (_, i) => 8 + i); // 08..18
+const hours = Array.from({ length: 11 }, (_, i) => 8 + i);
 const days = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
 function BookingsPage() {
   const [view, setView] = useState<"month" | "week" | "day">("week");
-  const [list, setList] = useState<Booking[]>(initial);
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
 
-  async function handleCreate(data: Omit<Booking, "id" | "status" | "avatar">) {
-    // Simulated API
-    await new Promise((r) => setTimeout(r, 700));
-    const newB: Booking = {
+  const { data: bookings = [], isLoading: bookingsLoading } = useQuery({
+    queryKey: ["bookings"],
+    queryFn: getBookings,
+  });
+
+  const { data: rooms = [] } = useQuery({
+    queryKey: ["rooms"],
+    queryFn: getRooms,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createBooking,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      setOpen(false);
+      toast.success("Reserva criada com sucesso!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao criar reserva");
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: cancelBooking,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      toast.success("Reserva cancelada");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao cancelar reserva");
+    },
+  });
+
+  function handleCreate(data: { room_id: string; start_time: string; end_time: string; notes?: string }) {
+    createMutation.mutate({
       ...data,
-      id: `b${Date.now()}`,
-      status: "confirmed",
-      avatar: "VC",
-    };
-    setList((l) => [newB, ...l]);
-    setOpen(false);
-    toast.success("Reserva criada com sucesso", {
-      description: `${newB.roomName} · ${newB.date} ${newB.start}–${newB.end}`,
+      user_id: "current-user", // TODO: get from auth context
     });
   }
 
@@ -56,7 +81,7 @@ function BookingsPage() {
           <button className="grid size-8 place-items-center rounded-md border border-border bg-surface hover:bg-secondary">
             <ChevronLeft className="size-4" />
           </button>
-          <span className="text-sm font-semibold">Semana de 18 – 24 ago</span>
+          <span className="text-sm font-semibold">Semana atual</span>
           <button className="grid size-8 place-items-center rounded-md border border-border bg-surface hover:bg-secondary">
             <ChevronRight className="size-4" />
           </button>
@@ -88,7 +113,6 @@ function BookingsPage() {
           ))}
         </div>
         <div className="relative grid grid-cols-[60px_repeat(7,1fr)] divide-x divide-border">
-          {/* Hours column */}
           <div className="divide-y divide-border">
             {hours.map((h) => (
               <div key={h} className="h-14 px-2 pt-1 text-right text-[10px] font-medium text-muted-foreground">
@@ -96,107 +120,127 @@ function BookingsPage() {
               </div>
             ))}
           </div>
-          {days.map((d, di) => (
+          {days.map((d) => (
             <div key={d} className="relative divide-y divide-border">
-              {hours.map((h) => {
-                const busy = (di === 2 && (h === 9 || h === 14)) || (di === 4 && h === 16);
-                return (
-                  <div
-                    key={h}
-                    className={`h-14 transition-colors ${
-                      busy ? "bg-secondary/40" : "hover:bg-primary/5 cursor-pointer"
-                    }`}
-                  />
-                );
-              })}
-              {/* Sample event blocks */}
-              {di === 2 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="absolute inset-x-1 top-[56px] h-[80px] rounded-md gw-gradient-primary p-2 text-[11px] font-medium text-primary-foreground gw-shadow-glow"
-                >
-                  <p className="font-bold">Executive Suite</p>
-                  <p className="opacity-90">09:00 – 10:30</p>
-                </motion.div>
-              )}
-              {di === 4 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="absolute inset-x-1 top-[224px] h-[56px] rounded-md bg-accent/90 p-2 text-[11px] font-medium text-accent-foreground"
-                >
-                  <p className="font-bold">Boardroom Arctic</p>
-                  <p className="opacity-90">16:00 – 18:00</p>
-                </motion.div>
-              )}
+              {hours.map((h) => (
+                <div key={h} className="h-14 transition-colors hover:bg-primary/5 cursor-pointer" />
+              ))}
             </div>
           ))}
         </div>
       </div>
 
-      {/* My bookings list */}
+      {/* Bookings list */}
       <div className="rounded-xl border border-border bg-card p-5 gw-shadow-soft">
-        <h2 className="mb-4 text-base font-semibold">Minhas reservas</h2>
-        <ul className="divide-y divide-border">
-          {list.map((b) => (
-            <li key={b.id} className="flex flex-wrap items-center gap-4 py-3 first:pt-0">
-              <span className="grid size-10 place-items-center rounded-lg gw-gradient-primary text-xs font-bold text-primary-foreground">
-                {b.avatar}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{b.roomName}</p>
-                <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="size-3" /> {b.user}
-                  <span>·</span>
-                  <Users className="size-3" /> {b.attendees}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="flex items-center gap-1 text-sm font-semibold tabular-nums">
-                  <Clock className="size-3.5 text-muted-foreground" /> {b.date} · {b.start}–{b.end}
-                </p>
-                <span
-                  className={`mt-0.5 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                    b.status === "confirmed"
-                      ? "bg-success/15 text-success"
-                      : b.status === "pending"
-                        ? "bg-warning/15 text-warning"
-                        : "bg-destructive/15 text-destructive"
-                  }`}
-                >
-                  {b.status}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <h2 className="mb-4 text-base font-semibold">Minhas reservas ({bookings.length})</h2>
+        {bookingsLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 animate-pulse rounded-lg bg-surface" />
+            ))}
+          </div>
+        ) : bookings.length === 0 ? (
+          <div className="py-8 text-center">
+            <Calendar className="mx-auto size-10 text-muted-foreground" />
+            <p className="mt-3 text-sm text-muted-foreground">Nenhuma reserva encontrada.</p>
+            <button
+              onClick={() => setOpen(true)}
+              className="mt-3 text-sm font-medium text-primary hover:underline"
+            >
+              Criar primeira reserva
+            </button>
+          </div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {bookings.map((b) => {
+              const room = rooms.find((r) => r.id === b.room_id);
+              const startDate = new Date(b.start_time);
+              const endDate = new Date(b.end_time);
+              return (
+                <li key={b.id} className="flex flex-wrap items-center gap-4 py-3 first:pt-0">
+                  <span className="grid size-10 place-items-center rounded-lg gw-gradient-primary text-xs font-bold text-primary-foreground">
+                    {room?.name?.slice(0, 2).toUpperCase() || "SA"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">{room?.name || "Sala"}</p>
+                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <MapPin className="size-3" />
+                      {startDate.toLocaleDateString("pt-BR")}
+                      <span>·</span>
+                      <Clock className="size-3" />
+                      {startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} – {endDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold tabular-nums">
+                      R$ {b.total_price.toFixed(2)}
+                    </p>
+                    <span
+                      className={`mt-0.5 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                        b.status === "confirmed"
+                          ? "bg-success/15 text-success"
+                          : b.status === "pending"
+                            ? "bg-warning/15 text-warning"
+                            : b.status === "canceled"
+                              ? "bg-destructive/15 text-destructive"
+                              : "bg-secondary text-muted-foreground"
+                      }`}
+                    >
+                      {b.status === "confirmed" ? "Confirmada" : b.status === "pending" ? "Pendente" : b.status === "canceled" ? "Cancelada" : "Finalizada"}
+                    </span>
+                  </div>
+                  {(b.status === "pending" || b.status === "confirmed") && (
+                    <button
+                      onClick={() => cancelMutation.mutate(b.id)}
+                      className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
-      <NewBookingModal open={open} onClose={() => setOpen(false)} onSubmit={handleCreate} />
+      <NewBookingModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onSubmit={handleCreate}
+        rooms={rooms}
+        loading={createMutation.isPending}
+      />
     </div>
   );
 }
 
 function NewBookingModal({
-  open, onClose, onSubmit,
-}: { open: boolean; onClose: () => void; onSubmit: (b: Omit<Booking, "id" | "status" | "avatar">) => Promise<void> }) {
-  const [roomId, setRoomId] = useState(rooms[0].id);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  open, onClose, onSubmit, rooms, loading,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (data: { room_id: string; start_time: string; end_time: string; notes?: string }) => void;
+  rooms: ApiRoom[];
+  loading: boolean;
+}) {
+  const [roomId, setRoomId] = useState(rooms[0]?.id || "");
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("10:00");
-  const [attendees, setAttendees] = useState(4);
   const [notes, setNotes] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    const room = rooms.find((r) => r.id === roomId)!;
-    await onSubmit({
-      roomId, roomName: room.name, user: "Você", date, start, end, attendees,
+    const startDateTime = new Date(`${date}T${start}`);
+    const endDateTime = new Date(`${date}T${end}`);
+    onSubmit({
+      room_id: roomId,
+      start_time: startDateTime.toISOString(),
+      end_time: endDateTime.toISOString(),
+      notes: notes || undefined,
     });
-    setLoading(false);
   }
 
   return (
@@ -232,18 +276,15 @@ function NewBookingModal({
                   className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   {rooms.map((r) => (
-                    <option key={r.id} value={r.id}>{r.name} · até {r.capacity}p</option>
+                    <option key={r.id} value={r.id}>{r.name} · até {r.capacity}p · R${r.hourly_rate}/h</option>
                   ))}
                 </select>
               </Field>
               <div className="grid grid-cols-3 gap-3">
-                <Field label="Data"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+                <Field label="Data"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} min={today} /></Field>
                 <Field label="Início"><Input type="time" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
                 <Field label="Fim"><Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
               </div>
-              <Field label="Convidados">
-                <Input type="number" min={1} value={attendees} onChange={(e) => setAttendees(+e.target.value)} />
-              </Field>
               <Field label="Observações (opcional)">
                 <textarea
                   rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
@@ -278,6 +319,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   );
 }
+
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
