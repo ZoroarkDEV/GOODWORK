@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, Bell, ChevronDown, Menu, LogOut, User, Settings as SettingsIcon, ShieldCheck, UserRound, ArrowLeftRight } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { notifications } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth";
 
 interface HeaderProps {
@@ -13,8 +12,7 @@ interface HeaderProps {
 export function Header({ onToggleSidebar }: HeaderProps) {
   const [openNotif, setOpenNotif] = useState(false);
   const [openUser, setOpenUser] = useState(false);
-  const unread = notifications.filter((n) => !n.read).length;
-  const { user, signOut, switchRole } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
   const isManager = user?.role === "manager";
@@ -23,17 +21,6 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     await signOut();
     toast.success("Sessão encerrada.");
     navigate({ to: "/login", replace: true });
-  }
-
-  function handleSwitchRole() {
-    const next = isManager ? "member" : "manager";
-    switchRole(next);
-    toast.message(`Modo ${next === "manager" ? "Gestor" : "Membro"} ativado`, {
-      description: "Demo: alternância rápida entre perfis.",
-    });
-    setOpenUser(false);
-    if (next === "member") navigate({ to: "/rooms" });
-    else navigate({ to: "/dashboard" });
   }
 
   return (
@@ -80,11 +67,6 @@ export function Header({ onToggleSidebar }: HeaderProps) {
               className="relative grid size-9 place-items-center rounded-lg border border-border bg-surface hover:bg-secondary transition-colors"
             >
               <Bell className="size-4" />
-              {unread > 0 && (
-                <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground gw-shadow-soft">
-                  {unread}
-                </span>
-              )}
             </button>
 
             <AnimatePresence>
@@ -102,31 +84,9 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                       Ver todas
                     </Link>
                   </div>
-                  <ul className="max-h-[360px] divide-y divide-border overflow-auto">
-                    {notifications.slice(0, 4).map((n, i) => (
-                      <motion.li
-                        key={n.id}
-                        initial={{ opacity: 0, x: 6 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.04 }}
-                        className="flex gap-3 px-4 py-3 hover:bg-secondary/60"
-                      >
-                        <span
-                          className={`mt-1 size-2 shrink-0 rounded-full ${
-                            n.type === "alert" ? "bg-destructive"
-                              : n.type === "warning" ? "bg-warning"
-                              : n.type === "success" ? "bg-success"
-                              : "bg-primary"
-                          }`}
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{n.title}</p>
-                          <p className="line-clamp-2 text-xs text-muted-foreground">{n.description}</p>
-                          <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{n.time}</p>
-                        </div>
-                      </motion.li>
-                    ))}
-                  </ul>
+                  <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                    Nenhuma notificação no momento.
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -138,15 +98,15 @@ export function Header({ onToggleSidebar }: HeaderProps) {
               onClick={() => { setOpenUser((v) => !v); setOpenNotif(false); }}
               className="flex items-center gap-2 rounded-lg border border-border bg-surface px-2 py-1.5 hover:bg-secondary transition-colors"
             >
-              <span className="grid size-7 place-items-center rounded-md gw-gradient-primary text-xs font-bold text-primary-foreground">
-                {user?.avatarInitials ?? "GW"}
-              </span>
-              <span className="hidden text-left leading-tight md:block">
-                <span className="block text-xs font-semibold">{user?.name ?? "Convidado"}</span>
-                <span className="block text-[10px] text-muted-foreground">
-                  {isManager ? "Gestor" : "Membro"} · {user?.company ?? "GOODWORK"}
+                <span className="grid size-7 place-items-center rounded-md gw-gradient-primary text-xs font-bold text-primary-foreground">
+                  {user?.name?.slice(0, 2).toUpperCase() ?? "GW"}
                 </span>
-              </span>
+                <span className="hidden text-left leading-tight md:block">
+                  <span className="block text-xs font-semibold">{user?.name ?? "Convidado"}</span>
+                  <span className="block text-[10px] text-muted-foreground">
+                    {isManager ? "Gestor" : "Membro"} · {user?.email ?? ""}
+                  </span>
+                </span>
               <ChevronDown className="size-3.5 text-muted-foreground" />
             </button>
 
@@ -162,6 +122,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                   <div className="px-3 py-2.5">
                     <p className="text-sm font-semibold">{user?.name}</p>
                     <p className="truncate text-[11px] text-muted-foreground">{user?.email}</p>
+                    <p className="mt-0.5 text-[10px] font-medium text-primary">{isManager ? "Gestor" : "Membro"}</p>
                   </div>
                   <div className="my-1 h-px bg-border" />
                   <Link to="/settings" onClick={() => setOpenUser(false)} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-secondary">
@@ -170,13 +131,6 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                   <Link to="/settings" onClick={() => setOpenUser(false)} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-secondary">
                     <SettingsIcon className="size-4 text-muted-foreground" /> Configurações
                   </Link>
-                  <button
-                    onClick={handleSwitchRole}
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-secondary"
-                  >
-                    <ArrowLeftRight className="size-4 text-muted-foreground" />
-                    Trocar para {isManager ? "Membro" : "Gestor"}
-                  </button>
                   <div className="my-1 h-px bg-border" />
                   <button
                     onClick={handleLogout}

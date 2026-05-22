@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Sparkles, Mail, Lock, ArrowRight, ShieldCheck, UserRound } from "lucide-react";
-import { useAuth, type Role } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -14,18 +14,17 @@ function LoginPage() {
   const nav = useNavigate();
   const { signInWithPassword, signInWithOAuth } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [role, setRole] = useState<Role>("member");
-  const [email, setEmail] = useState("ana.martins@goodwork.io");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signInWithPassword({ email, password, role });
+    const { error } = await signInWithPassword({ email, password });
     setLoading(false);
     if (error) return toast.error(error);
-    toast.success(`Bem-vindo(a)! Entrando como ${role === "manager" ? "Gestor" : "Membro"}.`);
-    nav({ to: role === "manager" ? "/dashboard" : "/rooms" });
+    toast.success("Bem-vindo(a)!");
+    nav({ to: "/rooms" });
   }
 
   async function google() {
@@ -35,12 +34,6 @@ function LoginPage() {
     if (error) return toast.error(error);
     toast.success("Login Google efetuado.");
     nav({ to: "/dashboard" });
-  }
-
-  function fillDemo(r: Role) {
-    setRole(r);
-    setEmail(r === "manager" ? "ana.gestor@goodwork.io" : "joao.membro@goodwork.io");
-    setPassword("demo1234");
   }
 
   return (
@@ -59,29 +52,6 @@ function LoginPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Entre na sua conta</h1>
           <p className="mt-1 text-sm text-muted-foreground">Gerencie seu coworking de qualquer lugar.</p>
-        </div>
-
-        {/* Role selector */}
-        <div>
-          <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Tipo de acesso
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            <RoleCard
-              active={role === "member"}
-              onClick={() => setRole("member")}
-              icon={UserRound}
-              title="Membro"
-              desc="Reserve salas e veja seus agendamentos."
-            />
-            <RoleCard
-              active={role === "manager"}
-              onClick={() => setRole("manager")}
-              icon={ShieldCheck}
-              title="Gestor"
-              desc="KPIs, analytics e suprimentos."
-            />
-          </div>
         </div>
 
         <button
@@ -134,17 +104,10 @@ function LoginPage() {
           {loading ? "Entrando…" : (<>Entrar <ArrowRight className="size-4" /></>)}
         </button>
 
-        <div className="rounded-lg border border-dashed border-border bg-surface/50 p-3 text-[11px] text-muted-foreground">
-          <p className="mb-1.5 font-semibold text-foreground">Contas de demonstração</p>
-          <div className="flex flex-wrap gap-1.5">
-            <button type="button" onClick={() => fillDemo("member")} className="rounded-md border border-border bg-background px-2 py-1 hover:bg-secondary">
-              Demo Membro
-            </button>
-            <button type="button" onClick={() => fillDemo("manager")} className="rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-primary hover:bg-primary/15">
-              Demo Gestor
-            </button>
-          </div>
-        </div>
+         <div className="rounded-lg border border-dashed border-border bg-surface/50 p-3 text-[11px] text-muted-foreground">
+           <p className="mb-1.5 font-semibold text-foreground">Dica</p>
+           <p>Crie uma conta na página de registro para testar o sistema.</p>
+         </div>
 
         <p className="text-center text-xs text-muted-foreground">
           Novo no GOODWORK? <Link to="/register" className="font-semibold text-primary hover:underline">Criar conta</Link>

@@ -1,24 +1,16 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 
-/**
- * Mock de auth com a MESMA shape do Supabase Auth.
- * Aqui simulamos chamadas — quando integrar o Supabase real, basta
- * trocar o corpo dos métodos por supabase.auth.signInWithPassword etc.
- */
-
-export type Role = "member" | "manager";
+export type Role = "user" | "manager" | "admin";
 
 export type GWUser = {
   id: string;
   email: string;
   name: string;
   role: Role;
-  company: string;
-  avatarInitials: string;
 };
 
 export type GWSession = {
-  access_token: string;
+  token: string;
   user: GWUser;
 };
 
@@ -26,15 +18,15 @@ type AuthCtx = {
   session: GWSession | null;
   user: GWUser | null;
   loading: boolean;
-  signInWithPassword: (args: { email: string; password: string; role?: Role }) => Promise<{ error: string | null }>;
+  signInWithPassword: (args: { email: string; password: string }) => Promise<{ error: string | null }>;
   signUp: (args: { name: string; email: string; password: string; role: Role }) => Promise<{ error: string | null }>;
   signInWithOAuth: (provider: "google") => Promise<{ error: string | null }>;
   resetPasswordForEmail: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
-  switchRole: (role: Role) => void;
 };
 
 const STORAGE_KEY = "gw.session.v1";
+const API_BASE = "/api";
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
@@ -54,36 +46,10 @@ function writeStored(s: GWSession | null) {
   else localStorage.removeItem(STORAGE_KEY);
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("") || "GW";
-}
-
-function fakeUser(email: string, role: Role, name?: string): GWUser {
-  const displayName = name?.trim() || email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  return {
-    id: `usr_${btoa(email).slice(0, 10)}`,
-    email,
-    name: displayName,
-    role,
-    company: "GOODWORK HQ",
-    avatarInitials: initials(displayName),
-  };
-}
-
-function delay(ms = 600) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<GWSession | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Hidratação (equivalente a supabase.auth.getSession + onAuthStateChange)
   useEffect(() => {
     setSession(readStored());
     setLoading(false);
@@ -94,52 +60,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     writeStored(s);
   }, []);
 
-  const signInWithPassword: AuthCtx["signInWithPassword"] = useCallback(async ({ email, password, role = "member" }) => {
-    await delay(650);
-    if (!email || !password) return { error: "Informe e-mail e senha." };
-    if (password.length < 4) return { error: "Senha muito curta (mínimo 4 caracteres no demo)." };
-    // E-mails contendo "manager" ou "admin" entram como gestor automaticamente
-    const resolved: Role = /manager|admin|gestor/i.test(email) ? "manager" : role;
-    const user = fakeUser(email, resolved);
-    setAndPersist({ access_token: `mock.${user.id}.${Date.now()}`, user });
-    return { error: null };
+  const signInWithPassword: AuthCtx["signInWithPassword"] = useCallback(async ({ email, password }) => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error || "Erro ao fazer login." };
+      setAndPersist({ token: data.token, user: data.user });
+      return { error: null };
+    } catch {
+      return { error: "Erro de conexão com o servidor." };
+    }
   }, [setAndPersist]);
 
   const signUp: AuthCtx["signUp"] = useCallback(async ({ name, email, password, role }) => {
-    await delay(800);
-    if (!name || !email || !password) return { error: "Preencha todos os campos." };
-    if (password.length < 8) return { error: "A senha precisa ter ao menos 8 caracteres." };
-    const user = fakeUser(email, role, name);
-    setAndPersist({ access_token: `mock.${user.id}.${Date.now()}`, user });
-    return { error: null };
-  }, [setAndPersist]);
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, role }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error || "Erro ao criar conta." };
+      // Auto-login after signup
+      return await signInWithPassword({ email, password });
+    } catch {
+      return { error: "Erro de conexão com o servidor." };
+    }
+  }, [signInWithPassword]);
 
   const signInWithOAuth: AuthCtx["signInWithOAuth"] = useCallback(async () => {
-    await delay(500);
-    const user = fakeUser("ana.martins@goodwork.io", "manager", "Ana Martins");
-    setAndPersist({ access_token: `mock.${user.id}.${Date.now()}`, user });
-    return { error: null };
-  }, [setAndPersist]);
+    return { error: "OAuth ainda não implementado. Use e-mail e senha." };
+  }, []);
 
   const resetPasswordForEmail: AuthCtx["resetPasswordForEmail"] = useCallback(async (email) => {
-    await delay(700);
     if (!email) return { error: "Informe seu e-mail." };
     return { error: null };
   }, []);
 
   const signOut = useCallback(async () => {
-    await delay(200);
     setAndPersist(null);
   }, [setAndPersist]);
-
-  const switchRole = useCallback((role: Role) => {
-    setSession((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, user: { ...prev.user, role } };
-      writeStored(next);
-      return next;
-    });
-  }, []);
 
   return (
     <AuthContext.Provider
@@ -152,7 +116,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithOAuth,
         resetPasswordForEmail,
         signOut,
-        switchRole,
       }}
     >
       {children}
@@ -166,7 +129,7 @@ export function useAuth() {
   return ctx;
 }
 
-/** Rotas exclusivas do gestor */
+/** Rotas exclusivas do gestor/admin */
 export const MANAGER_ROUTES = ["/dashboard", "/analytics", "/supplies"] as const;
 
 export function isManagerRoute(pathname: string) {

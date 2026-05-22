@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Sparkles, User as UserIcon, Mail, Lock, ArrowRight, ShieldCheck, UserRound, Check } from "lucide-react";
 import { AuthShell } from "./login";
-import { useAuth, type Role } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/register")({
   component: RegisterPage,
@@ -15,7 +15,7 @@ function RegisterPage() {
   const nav = useNavigate();
   const { signUp } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [role, setRole] = useState<Role>("member");
+  const [role, setRole] = useState<"user" | "manager">("user");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +29,7 @@ function RegisterPage() {
     setLoading(false);
     if (error) return toast.error(error);
     toast.success("Conta criada com sucesso!");
-    nav({ to: role === "manager" ? "/dashboard" : "/rooms" });
+    nav({ to: "/rooms" });
   }
 
   return (
@@ -55,7 +55,7 @@ function RegisterPage() {
             Como você vai usar o GOODWORK?
           </span>
           <div className="grid grid-cols-2 gap-2">
-            <RoleOption active={role === "member"} onClick={() => setRole("member")} icon={UserRound} title="Sou Membro" desc="Vou reservar salas." />
+            <RoleOption active={role === "user"} onClick={() => setRole("user")} icon={UserRound} title="Sou Membro" desc="Vou reservar salas." />
             <RoleOption active={role === "manager"} onClick={() => setRole("manager")} icon={ShieldCheck} title="Sou Gestor" desc="Vou administrar o espaço." />
           </div>
         </div>

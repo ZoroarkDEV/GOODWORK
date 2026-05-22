@@ -22,7 +22,7 @@ function AppLayout() {
       return;
     }
     // Bloqueia rotas exclusivas do gestor
-    if (user?.role !== "manager" && isManagerRoute(pathname)) {
+    if (user?.role !== "manager" && user?.role !== "admin" && isManagerRoute(pathname)) {
       navigate({ to: "/rooms", replace: true });
     }
   }, [loading, session, user, pathname, navigate]);
