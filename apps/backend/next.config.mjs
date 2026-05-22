@@ -11,6 +11,8 @@ const nextConfig = {
     };
     return config;
   },
+  // Add Turbopack configuration to silence the warning and potentially resolve build issues
+  turbopack: {},
 };
 
 export default nextConfig;

@@ -12,6 +12,10 @@
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
   },
+  "overrides": {
+    "@types/react": "18.3.29",
+    "@types/react-dom": "18.3.7"
+  },
   "keywords": [
     "coworking",
     "saas",
