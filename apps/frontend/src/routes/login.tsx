@@ -41,7 +41,7 @@ function LoginPage() {
       <motion.form
         onSubmit={submit}
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
-        className="w-full max-w-md space-y-5 rounded-2xl border border-border bg-card/80 p-8 gw-shadow-luxe backdrop-blur-xl"
+        className="w-full max-w-md space-y-5 rounded-2xl border border-border bg-card/80 p-5 sm:p-8 gw-shadow-luxe backdrop-blur-xl"
       >
         <div className="flex items-center gap-2.5">
           <span className="grid size-10 place-items-center rounded-xl gw-gradient-primary gw-shadow-glow">
@@ -144,15 +144,15 @@ function RoleCard({
 
 export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative grid min-h-dvh place-items-center overflow-hidden gw-gradient-hero p-4">
+    <div className="relative grid min-h-dvh place-items-center overflow-hidden gw-gradient-hero px-4 py-8 sm:p-4">
       <div className="absolute inset-0 gw-grid-bg opacity-30" />
       <div
         aria-hidden
         className="absolute inset-0 bg-cover bg-center opacity-[0.07]"
         style={{ backgroundImage: "url(https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=2000&q=80)" }}
       />
-      <div className="absolute -left-32 top-1/4 size-[400px] rounded-full bg-primary/15 blur-3xl" />
-      <div className="absolute -right-24 bottom-0 size-[420px] rounded-full bg-accent/15 blur-3xl" />
+      <div className="absolute -left-32 top-1/4 size-[300px] sm:size-[400px] rounded-full bg-primary/15 blur-3xl" />
+      <div className="absolute -right-24 bottom-0 size-[320px] sm:size-[420px] rounded-full bg-accent/15 blur-3xl" />
       <div className="relative z-10 w-full">
         <div className="mx-auto flex max-w-md justify-center">{children}</div>
       </div>

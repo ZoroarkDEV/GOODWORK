@@ -60,28 +60,28 @@ function BookingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6">
+    <div className="mx-auto max-w-[1400px] space-y-4 sm:space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Calendário</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Agendamentos</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Visualize, crie e gerencie reservas em tempo real.</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Agendamentos</h1>
+          <p className="mt-1 text-sm text-muted-foreground hidden sm:block">Visualize, crie e gerencie reservas em tempo real.</p>
         </div>
         <button
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-2 rounded-lg gw-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground gw-shadow-glow transition-transform hover:scale-[1.02]"
+          className="inline-flex items-center gap-2 rounded-lg gw-gradient-primary px-3 py-2 sm:px-4 sm:py-2.5 text-sm font-semibold text-primary-foreground gw-shadow-glow transition-transform hover:scale-[1.02]"
         >
-          <Plus className="size-4" /> Nova reserva
+          <Plus className="size-4" /> <span className="hidden sm:inline">Nova reserva</span><span className="sm:hidden">Nova</span>
         </button>
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card p-2 sm:p-3">
+        <div className="flex items-center gap-1 sm:gap-2">
           <button className="grid size-8 place-items-center rounded-md border border-border bg-surface hover:bg-secondary">
             <ChevronLeft className="size-4" />
           </button>
-          <span className="text-sm font-semibold">Semana atual</span>
+          <span className="text-xs sm:text-sm font-semibold">Semana atual</span>
           <button className="grid size-8 place-items-center rounded-md border border-border bg-surface hover:bg-secondary">
             <ChevronRight className="size-4" />
           </button>
@@ -91,7 +91,7 @@ function BookingsPage() {
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`rounded-md px-3 py-1.5 font-medium capitalize ${
+              className={`rounded-md px-2 py-1 sm:px-3 sm:py-1.5 font-medium capitalize ${
                 view === v ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -101,51 +101,53 @@ function BookingsPage() {
         </div>
       </div>
 
-      {/* Week grid */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card gw-shadow-soft">
-        <div className="grid grid-cols-[60px_repeat(7,1fr)] divide-x divide-border border-b border-border bg-surface/60">
-          <div />
-          {days.map((d, i) => (
-            <div key={d} className="px-3 py-2 text-center">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{d}</div>
-              <div className={`mt-0.5 text-sm font-bold ${i === 2 ? "text-primary" : ""}`}>{18 + i}</div>
-            </div>
-          ))}
-        </div>
-        <div className="relative grid grid-cols-[60px_repeat(7,1fr)] divide-x divide-border">
-          <div className="divide-y divide-border">
-            {hours.map((h) => (
-              <div key={h} className="h-14 px-2 pt-1 text-right text-[10px] font-medium text-muted-foreground">
-                {String(h).padStart(2, "0")}:00
+      {/* Week grid - horizontal scroll on mobile */}
+      <div className="overflow-x-auto overflow-hidden rounded-xl border border-border bg-card gw-shadow-soft">
+        <div className="min-w-[700px]">
+          <div className="grid grid-cols-[60px_repeat(7,1fr)] divide-x divide-border border-b border-border bg-surface/60">
+            <div />
+            {days.map((d, i) => (
+              <div key={d} className="px-3 py-2 text-center">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{d}</div>
+                <div className={`mt-0.5 text-sm font-bold ${i === 2 ? "text-primary" : ""}`}>{18 + i}</div>
               </div>
             ))}
           </div>
-          {days.map((d) => (
-            <div key={d} className="relative divide-y divide-border">
+          <div className="relative grid grid-cols-[60px_repeat(7,1fr)] divide-x divide-border">
+            <div className="divide-y divide-border">
               {hours.map((h) => (
-                <div key={h} className="h-14 transition-colors hover:bg-primary/5 cursor-pointer" />
+                <div key={h} className="h-12 sm:h-14 px-2 pt-1 text-right text-[10px] font-medium text-muted-foreground">
+                  {String(h).padStart(2, "0")}:00
+                </div>
               ))}
             </div>
-          ))}
+            {days.map((d) => (
+              <div key={d} className="relative divide-y divide-border">
+                {hours.map((h) => (
+                  <div key={h} className="h-12 sm:h-14 transition-colors hover:bg-primary/5 cursor-pointer" />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Bookings list */}
-      <div className="rounded-xl border border-border bg-card p-5 gw-shadow-soft">
-        <h2 className="mb-4 text-base font-semibold">Minhas reservas ({bookings.length})</h2>
+      <div className="rounded-xl border border-border bg-card p-3 sm:p-5 gw-shadow-soft">
+        <h2 className="mb-3 sm:mb-4 text-sm sm:text-base font-semibold">Minhas reservas ({bookings.length})</h2>
         {bookingsLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 animate-pulse rounded-lg bg-surface" />
+              <div key={i} className="h-14 sm:h-16 animate-pulse rounded-lg bg-surface" />
             ))}
           </div>
         ) : bookings.length === 0 ? (
-          <div className="py-8 text-center">
-            <Calendar className="mx-auto size-10 text-muted-foreground" />
-            <p className="mt-3 text-sm text-muted-foreground">Nenhuma reserva encontrada.</p>
+          <div className="py-6 sm:py-8 text-center">
+            <Calendar className="mx-auto size-8 sm:size-10 text-muted-foreground" />
+            <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-muted-foreground">Nenhuma reserva encontrada.</p>
             <button
               onClick={() => setOpen(true)}
-              className="mt-3 text-sm font-medium text-primary hover:underline"
+              className="mt-2 sm:mt-3 text-xs sm:text-sm font-medium text-primary hover:underline"
             >
               Criar primeira reserva
             </button>
@@ -157,26 +159,26 @@ function BookingsPage() {
               const startDate = new Date(b.start_time);
               const endDate = new Date(b.end_time);
               return (
-                <li key={b.id} className="flex flex-wrap items-center gap-4 py-3 first:pt-0">
-                  <span className="grid size-10 place-items-center rounded-lg gw-gradient-primary text-xs font-bold text-primary-foreground">
+                <li key={b.id} className="flex flex-wrap items-center gap-2 sm:gap-4 py-2.5 sm:py-3 first:pt-0">
+                  <span className="grid size-8 sm:size-10 place-items-center rounded-lg gw-gradient-primary text-[10px] sm:text-xs font-bold text-primary-foreground">
                     {room?.name?.slice(0, 2).toUpperCase() || "SA"}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">{room?.name || "Sala"}</p>
-                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <MapPin className="size-3" />
-                      {startDate.toLocaleDateString("pt-BR")}
+                    <p className="text-xs sm:text-sm font-semibold truncate">{room?.name || "Sala"}</p>
+                    <p className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground">
+                      <MapPin className="size-3 shrink-0" />
+                      <span className="truncate">{startDate.toLocaleDateString("pt-BR")}</span>
                       <span>·</span>
-                      <Clock className="size-3" />
-                      {startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} – {endDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                      <Clock className="size-3 shrink-0" />
+                      <span>{startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}–{endDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold tabular-nums">
+                    <p className="text-xs sm:text-sm font-semibold tabular-nums">
                       R$ {b.total_price.toFixed(2)}
                     </p>
                     <span
-                      className={`mt-0.5 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                      className={`mt-0.5 inline-block rounded-md px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${
                         b.status === "confirmed"
                           ? "bg-success/15 text-success"
                           : b.status === "pending"
@@ -192,7 +194,7 @@ function BookingsPage() {
                   {(b.status === "pending" || b.status === "confirmed") && (
                     <button
                       onClick={() => cancelMutation.mutate(b.id)}
-                      className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10"
+                      className="rounded-md border border-border bg-surface px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium text-destructive hover:bg-destructive/10"
                     >
                       Cancelar
                     </button>
@@ -280,11 +282,11 @@ function NewBookingModal({
                   ))}
                 </select>
               </Field>
-              <div className="grid grid-cols-3 gap-3">
-                <Field label="Data"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} min={today} /></Field>
-                <Field label="Início"><Input type="time" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
-                <Field label="Fim"><Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Field label="Data"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} min={today} /></Field>
+              <Field label="Início"><Input type="time" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
+              <Field label="Fim"><Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
+            </div>
               <Field label="Observações (opcional)">
                 <textarea
                   rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}

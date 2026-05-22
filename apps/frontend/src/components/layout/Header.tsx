@@ -7,9 +7,10 @@ import { useAuth } from "@/lib/auth";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
+  onMobileMenu?: () => void;
 }
 
-export function Header({ onToggleSidebar }: HeaderProps) {
+export function Header({ onToggleSidebar, onMobileMenu }: HeaderProps) {
   const [openNotif, setOpenNotif] = useState(false);
   const [openUser, setOpenUser] = useState(false);
   const { user, signOut } = useAuth();
@@ -26,10 +27,21 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-border gw-glass">
       <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
+        {/* Mobile menu button */}
+        {onMobileMenu && (
+          <button
+            onClick={onMobileMenu}
+            aria-label="Abrir menu"
+            className="grid size-9 place-items-center rounded-lg border border-border bg-surface hover:bg-secondary transition-colors lg:hidden"
+          >
+            <Menu className="size-4" />
+          </button>
+        )}
+        {/* Desktop sidebar toggle */}
         <button
           onClick={onToggleSidebar}
           aria-label="Alternar menu lateral"
-          className="grid size-9 place-items-center rounded-lg border border-border bg-surface hover:bg-secondary transition-colors"
+          className="hidden lg:grid size-9 place-items-center rounded-lg border border-border bg-surface hover:bg-secondary transition-colors"
         >
           <Menu className="size-4" />
         </button>

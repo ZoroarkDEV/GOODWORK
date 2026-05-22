@@ -55,14 +55,14 @@ function RoomsPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-[1400px] space-y-6">
+      <div className="mx-auto max-w-[1400px] space-y-4 sm:space-y-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Espaços</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Salas disponíveis</h1>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Salas disponíveis</h1>
         </div>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-72 animate-pulse rounded-xl border border-border bg-card" />
+            <div key={i} className="h-64 sm:h-72 animate-pulse rounded-xl border border-border bg-card" />
           ))}
         </div>
       </div>
@@ -71,12 +71,12 @@ function RoomsPage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-[1400px] space-y-6">
+      <div className="mx-auto max-w-[1400px] space-y-4 sm:space-y-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Espaços</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Salas disponíveis</h1>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Salas disponíveis</h1>
         </div>
-        <div className="rounded-xl border border-destructive/30 bg-card p-8 text-center">
+        <div className="rounded-xl border border-destructive/30 bg-card p-6 sm:p-8 text-center">
           <p className="text-sm text-destructive">Erro ao carregar salas: {(error as Error).message}</p>
           <p className="mt-2 text-xs text-muted-foreground">Verifique se o backend está rodando em http://localhost:3000</p>
         </div>
@@ -85,11 +85,11 @@ function RoomsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6">
+    <div className="mx-auto max-w-[1400px] space-y-4 sm:space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Espaços</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Salas disponíveis</h1>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">Salas disponíveis</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {filtered.length} de {rooms.length} salas correspondem aos seus filtros.
           </p>
@@ -97,7 +97,7 @@ function RoomsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 gw-shadow-soft sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-2 sm:p-3 sm:flex-row sm:items-center gw-shadow-soft">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -127,7 +127,7 @@ function RoomsPage() {
         initial="initial"
         animate="animate"
         variants={{ animate: { transition: { staggerChildren: 0.05 } } }}
-        className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3"
+        className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3"
       >
         {filtered.map((r) => (
           <motion.article

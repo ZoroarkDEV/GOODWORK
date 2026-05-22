@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -11,6 +12,7 @@ import {
   Sparkles,
   ShieldCheck,
   UserRound,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/auth";
@@ -34,17 +36,93 @@ const allNav: NavItem[] = [
 
 export function Sidebar({ collapsed, role }: { collapsed: boolean; role: Role }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const nav = allNav.filter((i) => !i.managerOnly || role === "manager");
-  const isManager = role === "manager";
+  const nav = allNav.filter((i) => !i.managerOnly || role === "manager" || role === "admin");
+  const isManager = role === "manager" || role === "admin";
 
   return (
-    <aside
-      className={cn(
-        "sticky top-0 hidden h-dvh shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex lg:flex-col",
-        "transition-[width] duration-300 ease-out",
-        collapsed ? "w-[76px]" : "w-[252px]",
+    <>
+      {/* Desktop Sidebar */}
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-dvh shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex lg:flex-col",
+          "transition-[width] duration-300 ease-out",
+          collapsed ? "w-[76px]" : "w-[252px]",
+        )}
+      >
+        <SidebarContent collapsed={collapsed} pathname={pathname} nav={nav} isManager={isManager} />
+      </aside>
+    </>
+  );
+}
+
+/** Mobile drawer — rendered at root level via SidebarMobile */
+export function SidebarMobile({ open, onClose, role }: { open: boolean; onClose: () => void; role: Role }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const nav = allNav.filter((i) => !i.managerOnly || role === "manager" || role === "admin");
+  const isManager = role === "manager" || role === "admin";
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm lg:hidden"
+          />
+          {/* Drawer */}
+          <motion.aside
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-sidebar text-sidebar-foreground lg:hidden"
+          >
+            {/* Close button */}
+            <div className="flex h-16 items-center justify-between px-5">
+              <div className="flex items-center gap-3">
+                <div className="relative grid size-9 place-items-center rounded-xl gw-gradient-primary gw-shadow-glow">
+                  <Sparkles className="size-4 text-primary-foreground" strokeWidth={2.5} />
+                </div>
+                <span className="text-[15px] font-bold tracking-tight">
+                  GOOD<span className="text-primary">WORK</span>
+                </span>
+              </div>
+              <button
+                onClick={onClose}
+                className="grid size-8 place-items-center rounded-lg hover:bg-sidebar-accent transition-colors"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <SidebarContent collapsed={false} pathname={pathname} nav={nav} isManager={isManager} onNavClick={onClose} />
+          </motion.aside>
+        </>
       )}
-    >
+    </AnimatePresence>
+  );
+}
+
+function SidebarContent({
+  collapsed,
+  pathname,
+  nav,
+  isManager,
+  onNavClick,
+}: {
+  collapsed: boolean;
+  pathname: string;
+  nav: NavItem[];
+  isManager: boolean;
+  onNavClick?: () => void;
+}) {
+  return (
+    <>
       {/* Brand */}
       <div className="flex h-16 items-center gap-3 px-5">
         <div className="relative grid size-9 place-items-center rounded-xl gw-gradient-primary gw-shadow-glow">
@@ -83,7 +161,7 @@ export function Sidebar({ collapsed, role }: { collapsed: boolean; role: Role })
       <div className="mx-3 mb-2 h-px bg-sidebar-border" />
 
       {/* Nav */}
-      <nav className="flex-1 space-y-1 px-3 py-2">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
         {nav.map((item) => {
           const Icon = item.icon;
           const active =
@@ -93,6 +171,7 @@ export function Sidebar({ collapsed, role }: { collapsed: boolean; role: Role })
             <Link
               key={item.to}
               to={item.to}
+              onClick={onNavClick}
               className={cn(
                 "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
                 "hover:bg-sidebar-accent",
@@ -143,6 +222,6 @@ export function Sidebar({ collapsed, role }: { collapsed: boolean; role: Role })
           </button>
         </div>
       )}
-    </aside>
+    </>
   );
 }

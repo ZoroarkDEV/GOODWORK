@@ -37,7 +37,7 @@ function RegisterPage() {
       <motion.form
         onSubmit={submit}
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
-        className="w-full max-w-md space-y-5 rounded-2xl border border-border bg-card/80 p-8 gw-shadow-luxe backdrop-blur-xl"
+        className="w-full max-w-md space-y-5 rounded-2xl border border-border bg-card/80 p-5 sm:p-8 gw-shadow-luxe backdrop-blur-xl"
       >
         <div className="flex items-center gap-2.5">
           <span className="grid size-10 place-items-center rounded-xl gw-gradient-primary gw-shadow-glow">
