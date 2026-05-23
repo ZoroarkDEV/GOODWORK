@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Plus, ChevronLeft, ChevronRight, X, Clock, MapPin, Users, Calendar } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getBookings, createBooking, cancelBooking, getRooms, type ApiBooking, type ApiRoom } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/bookings")({
   component: BookingsPage,
@@ -18,6 +19,7 @@ function BookingsPage() {
   const [view, setView] = useState<"month" | "week" | "day">("week");
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: bookings = [], isLoading: bookingsLoading } = useQuery({
     queryKey: ["bookings"],
@@ -53,9 +55,10 @@ function BookingsPage() {
   });
 
   function handleCreate(data: { room_id: string; start_time: string; end_time: string; notes?: string }) {
+    if (!user) return toast.error("Usuário não autenticado");
     createMutation.mutate({
       ...data,
-      user_id: "current-user", // TODO: get from auth context
+      user_id: user.id,
     });
   }
 
