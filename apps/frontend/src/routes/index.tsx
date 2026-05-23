@@ -8,16 +8,16 @@ export const Route = createFileRoute("/")({
 
 function IndexRedirect() {
   const nav = useNavigate();
-  const { loading, session, user } = useAuth();
+  const { loading, user } = useAuth();
 
   useEffect(() => {
     if (loading) return;
-    if (!session) {
+    if (!user) {
       nav({ to: "/login", replace: true });
     } else {
-      nav({ to: user?.role === "manager" ? "/dashboard" : "/rooms", replace: true });
+      nav({ to: user.role === "manager" || user.role === "admin" ? "/dashboard" : "/rooms", replace: true });
     }
-  }, [loading, session, user, nav]);
+  }, [loading, user, nav]);
 
   return (
     <div className="grid min-h-dvh place-items-center bg-background">
