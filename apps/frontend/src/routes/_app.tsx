@@ -3,6 +3,7 @@ import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/
 import { Sidebar, SidebarMobile } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { useAuth, isManagerRoute } from "@/lib/auth";
+import { BookingConfirmationPopup } from "@/components/BookingConfirmationPopup";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -48,6 +49,7 @@ function AppLayout() {
         <Header onToggleSidebar={() => setCollapsed((v) => !v)} onMobileMenu={() => setMobileOpen(true)} />
         <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet />
+          <BookingConfirmationPopup />
         </div>
       </div>
     </div>
