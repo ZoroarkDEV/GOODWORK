@@ -100,3 +100,42 @@ export function cancelBooking(id: string): Promise<{ message: string }> {
     method: 'DELETE',
   });
 }
+
+// --- Dashboard KPIs ---
+export interface DashboardKpis {
+  kpis: {
+    occupancyRate: number;
+    todaysTotal: number;
+    todaysConfirmed: number;
+    todaysPending: number;
+    monthlyRevenue: number;
+    cancellationRate: number;
+    totalRooms: number;
+  };
+  weeklyOccupancy: Array<{
+    day: string;
+    ocupacao: number;
+    reservas: number;
+  }>;
+  criticalSupplies: Array<{
+    id: string;
+    name: string;
+    category: string;
+    stock: number;
+    minStock: number;
+    unit: string;
+  }>;
+  todaysBookings: Array<{
+    id: string;
+    start_time: string;
+    end_time: string;
+    status: string;
+    room_id: string;
+    user_id: string;
+    notes: string | null;
+  }>;
+}
+
+export function getDashboardKpis(): Promise<DashboardKpis> {
+  return fetchJson<DashboardKpis>('/dashboard/kpis');
+}
