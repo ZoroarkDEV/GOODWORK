@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Sparkles, User as UserIcon, Mail, Lock, ArrowRight, ShieldCheck, UserRound, Check, MailCheck, ArrowLeft } from "lucide-react";
+import { Sparkles, User as UserIcon, Mail, Lock, ArrowRight, ShieldCheck, UserRound, Check, MailCheck, ArrowLeft, Briefcase } from "lucide-react";
 import { AuthShell } from "./login";
 import { useAuth, type Role } from "@/lib/auth";
+import { supabase } from "@/lib/supabaseClient";
 
 export const Route = createFileRoute("/register")({
   component: RegisterPage,
@@ -22,6 +23,22 @@ function RegisterPage() {
   const [agree, setAgree] = useState(true);
   const [emailSent, setEmailSent] = useState(false);
   const [sentTo, setSentTo] = useState("");
+  const [jobTitleId, setJobTitleId] = useState("");
+  const [jobTitleCustom, setJobTitleCustom] = useState("");
+  const [useCustomTitle, setUseCustomTitle] = useState(false);
+  const [jobTitles, setJobTitles] = useState<Array<{id:string;name:string;category:string}>>([]);
+
+  useEffect(() => {
+    supabase
+      .from("job_titles")
+      .select("id, name, category")
+      .eq("active", true)
+      .order("category", { ascending: true })
+      .order("name", { ascending: true })
+      .then(({ data }) => {
+        if (data) setJobTitles(data);
+      });
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,6 +47,16 @@ function RegisterPage() {
     const { error } = await signUp({ name, email, password, role });
     setLoading(false);
     if (error) return toast.error(error);
+
+    // Save job_title to user profile
+    const title = useCustomTitle ? jobTitleCustom : jobTitles.find((t) => t.id === jobTitleId)?.name || "";
+    if (title) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        await supabase.from("users").update({ job_title: title }).eq("id", authUser.id);
+      }
+    }
+
     setSentTo(email);
     setEmailSent(true);
   }
@@ -82,6 +109,42 @@ function RegisterPage() {
               <Input icon={UserIcon} label="Nome completo" placeholder="Ana Martins" value={name} onChange={(e) => setName(e.target.value)} required />
               <Input icon={Mail} label="E-mail" type="email" placeholder="voce@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
               <Input icon={Lock} label="Senha" type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold text-muted-foreground">Cargo</span>
+                <div className="relative">
+                  <Briefcase className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <select
+                    value={useCustomTitle ? "custom" : jobTitleId}
+                    onChange={(e) => {
+                      if (e.target.value === "custom") {
+                        setUseCustomTitle(true);
+                      } else {
+                        setUseCustomTitle(false);
+                        setJobTitleId(e.target.value);
+                      }
+                    }}
+                    className="w-full appearance-none rounded-lg border border-border bg-surface py-2.5 pl-10 pr-3 text-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">Selecione seu cargo…</option>
+                    {Object.entries(jobTitles.reduce<Record<string, Array<{id:string;name:string;category:string}>>>((acc, t) => { if (!acc[t.category]) acc[t.category] = []; acc[t.category].push(t); return acc; }, {})).map(([category, titles]) => (
+                      <optgroup key={category} label={category}>
+                        {titles.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                    <option value="custom">Outro (especificar)</option>
+                  </select>
+                </div>
+                {useCustomTitle && (
+                  <input
+                    value={jobTitleCustom}
+                    onChange={(e) => setJobTitleCustom(e.target.value)}
+                    placeholder="Digite seu cargo"
+                    className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                )}
+              </label>
             </div>
 
             {/* Terms */}
