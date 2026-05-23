@@ -2,7 +2,7 @@
 
 > **Plataforma SaaS Premium de Gerenciamento de Coworking**
 >
-> Uma solução ponta a ponta focada em agendamento inteligente de salas, gestão operacional de suprimentos, KPIs gerenciais avançados, automação de notificações, integração nativa com Google Calendar e uma experiência de usuário (UX/UI) moderna e premium.
+> Uma solução ponta a ponta focada em agendamento inteligente de salas, gestão operacional de suprimentos, KPIs gerenciais avançados, automação de notificações e uma experiência de usuário (UX/UI) moderna e premium.
 
 ---
 
