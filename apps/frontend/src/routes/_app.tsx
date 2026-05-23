@@ -11,14 +11,15 @@ export const Route = createFileRoute("/_app")({
 function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { session, loading, user } = useAuth();
+  const { user, loading } = useAuth();
+  const isAuthenticated = !!user;
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   // Guard de autenticação (mock — equivalente a checar supabase.auth.getSession)
   useEffect(() => {
     if (loading) return;
-    if (!session) {
+    if (!isAuthenticated) {
       navigate({ to: "/login", search: { redirect: pathname } as never, replace: true });
       return;
     }
@@ -26,9 +27,9 @@ function AppLayout() {
     if (user?.role !== "manager" && user?.role !== "admin" && isManagerRoute(pathname)) {
       navigate({ to: "/rooms", replace: true });
     }
-  }, [loading, session, user, pathname, navigate]);
+  }, [loading, isAuthenticated, user, pathname, navigate]);
 
-  if (loading || !session) {
+  if (loading || !isAuthenticated) {
     return (
       <div className="grid min-h-dvh place-items-center bg-background">
         <div className="flex items-center gap-3 text-sm text-muted-foreground">

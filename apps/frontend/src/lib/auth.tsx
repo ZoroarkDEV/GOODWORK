@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
+import { supabase } from "./supabaseClient";
 
 export type Role = "user" | "manager" | "admin";
 
@@ -9,115 +17,91 @@ export type GWUser = {
   role: Role;
 };
 
-export type GWSession = {
-  token: string;
-  user: GWUser;
-};
-
 type AuthCtx = {
-  session: GWSession | null;
   user: GWUser | null;
   loading: boolean;
-  signInWithPassword: (args: { email: string; password: string }) => Promise<{ error: string | null }>;
-  signUp: (args: { name: string; email: string; password: string; role: Role }) => Promise<{ error: string | null }>;
-  signInWithOAuth: (provider: "google") => Promise<{ error: string | null }>;
-  resetPasswordForEmail: (email: string) => Promise<{ error: string | null }>;
+  signIn: (args: { email: string; password: string }) => Promise<{ error: string | null }>;
+  signUp: (args: {
+    name: string;
+    email: string;
+    password: string;
+    role: Role;
+  }) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 };
 
-const STORAGE_KEY = "gw.session.v1";
-const API_BASE = "/api";
-
 const AuthContext = createContext<AuthCtx | null>(null);
 
-function readStored(): GWSession | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as GWSession) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStored(s: GWSession | null) {
-  if (typeof window === "undefined") return;
-  if (s) localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-  else localStorage.removeItem(STORAGE_KEY);
+function mapSupabaseUser(session: any): GWUser | null {
+  if (!session?.user) return null;
+  const u = session.user;
+  return {
+    id: u.id,
+    email: u.email ?? "",
+    name: u.user_metadata?.name ?? u.email?.split("@")[0] ?? "Usuário",
+    role: (u.user_metadata?.role as Role) ?? "user",
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<GWSession | null>(null);
+  const [user, setUser] = useState<GWUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setSession(readStored());
-    setLoading(false);
+    // Check existing session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(mapSupabaseUser(session));
+      setLoading(false);
+    });
+
+    // Listen for auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(mapSupabaseUser(session));
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const setAndPersist = useCallback((s: GWSession | null) => {
-    setSession(s);
-    writeStored(s);
-  }, []);
-
-  const signInWithPassword: AuthCtx["signInWithPassword"] = useCallback(async ({ email, password }) => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) return { error: data.error || "Erro ao fazer login." };
-      setAndPersist({ token: data.token, user: data.user });
-      return { error: null };
-    } catch {
-      return { error: "Erro de conexão com o servidor." };
+  const signIn: AuthCtx["signIn"] = useCallback(async ({ email, password }) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      // Map common Supabase errors to friendly Portuguese messages
+      const msg = error.message.includes("Invalid login credentials")
+        ? "Credenciais inválidas. Verifique seu e-mail e senha."
+        : error.message.includes("Email not confirmed")
+          ? "E-mail não confirmado. Verifique sua caixa de entrada."
+          : error.message;
+      return { error: msg };
     }
-  }, [setAndPersist]);
+    return { error: null };
+  }, []);
 
   const signUp: AuthCtx["signUp"] = useCallback(async ({ name, email, password, role }) => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
-      });
-      const data = await res.json();
-      if (!res.ok) return { error: data.error || "Erro ao criar conta." };
-      // Auto-login after signup
-      return await signInWithPassword({ email, password });
-    } catch {
-      return { error: "Erro de conexão com o servidor." };
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name, role },
+      },
+    });
+    if (error) {
+      const msg = error.message.includes("already registered")
+        ? "Este e-mail já está cadastrado."
+        : error.message;
+      return { error: msg };
     }
-  }, [signInWithPassword]);
-
-  const signInWithOAuth: AuthCtx["signInWithOAuth"] = useCallback(async () => {
-    return { error: "OAuth ainda não implementado. Use e-mail e senha." };
-  }, []);
-
-  const resetPasswordForEmail: AuthCtx["resetPasswordForEmail"] = useCallback(async (email) => {
-    if (!email) return { error: "Informe seu e-mail." };
     return { error: null };
   }, []);
 
   const signOut = useCallback(async () => {
-    setAndPersist(null);
-  }, [setAndPersist]);
+    await supabase.auth.signOut();
+    setUser(null);
+  }, []);
 
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        user: session?.user ?? null,
-        loading,
-        signInWithPassword,
-        signUp,
-        signInWithOAuth,
-        resetPasswordForEmail,
-        signOut,
-      }}
-    >
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
@@ -125,11 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth deve ser usado dentro de <AuthProvider />");
+  if (!ctx) throw new Error("useAuth must be used within <AuthProvider />");
   return ctx;
 }
 
-/** Rotas exclusivas do gestor/admin */
+/** Manager-only routes */
 export const MANAGER_ROUTES = ["/dashboard", "/analytics", "/supplies"] as const;
 
 export function isManagerRoute(pathname: string) {

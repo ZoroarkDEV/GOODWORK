@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Sparkles, User as UserIcon, Mail, Lock, ArrowRight, ShieldCheck, UserRound, Check } from "lucide-react";
 import { AuthShell } from "./login";
-import { useAuth } from "@/lib/auth";
+import { useAuth, type Role } from "@/lib/auth";
 
 export const Route = createFileRoute("/register")({
   component: RegisterPage,
@@ -15,7 +15,7 @@ function RegisterPage() {
   const nav = useNavigate();
   const { signUp } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [role, setRole] = useState<"user" | "manager">("user");
+  const [role, setRole] = useState<Role>("user");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,8 +28,8 @@ function RegisterPage() {
     const { error } = await signUp({ name, email, password, role });
     setLoading(false);
     if (error) return toast.error(error);
-    toast.success("Conta criada com sucesso!");
-    nav({ to: "/rooms" });
+    toast.success("Conta criada! Verifique seu e-mail para confirmar.");
+    nav({ to: "/login" });
   }
 
   return (
@@ -83,9 +83,9 @@ function RegisterPage() {
 
         {/* Fields */}
         <div className="space-y-2.5 sm:space-y-3">
-          <Input icon={UserIcon} label="Nome completo" placeholder="Ana Martins" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input icon={Mail} label="E-mail" type="email" placeholder="voce@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Input icon={Lock} label="Senha" type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input icon={UserIcon} label="Nome completo" placeholder="Ana Martins" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input icon={Mail} label="E-mail" type="email" placeholder="voce@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Input icon={Lock} label="Senha" type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
 
         {/* Terms */}

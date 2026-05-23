@@ -12,7 +12,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const nav = useNavigate();
-  const { signInWithPassword, signInWithOAuth } = useAuth();
+  const { signIn } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,19 +20,11 @@ function LoginPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signInWithPassword({ email, password });
+    const { error } = await signIn({ email, password });
     setLoading(false);
     if (error) return toast.error(error);
     toast.success("Bem-vindo(a)!");
     nav({ to: "/rooms" });
-  }
-
-  async function google() {
-    setLoading(true);
-    const { error } = await signInWithOAuth("google");
-    setLoading(false);
-    if (error) return toast.error(error);
-    nav({ to: "/dashboard" });
   }
 
   return (
@@ -61,14 +53,13 @@ function LoginPage() {
           </p>
         </div>
 
-        {/* Google button */}
+        {/* Google — disabled */}
         <button
           type="button"
-          onClick={google}
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-medium hover:bg-secondary disabled:opacity-60"
+          disabled
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-medium text-muted-foreground opacity-50 cursor-not-allowed"
         >
-          <GoogleIcon className="size-4" /> Continuar com Google
+          <GoogleIcon className="size-4" /> Continuar com Google (em breve)
         </button>
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -85,6 +76,7 @@ function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
                 className="w-full rounded-lg border border-border bg-surface py-2.5 pl-10 pr-3 text-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -102,6 +94,7 @@ function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
                 className="w-full rounded-lg border border-border bg-surface py-2.5 pl-10 pr-3 text-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -139,7 +132,6 @@ function LoginPage() {
 export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden gw-gradient-hero px-4 py-6">
-      {/* Background effects — hidden on mobile for performance */}
       <div className="absolute inset-0 gw-grid-bg opacity-30" />
       <div
         aria-hidden
