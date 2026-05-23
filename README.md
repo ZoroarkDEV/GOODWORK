@@ -32,10 +32,11 @@ Este projeto adota **commits em inglês** como padrão. A escolha alinha o repos
 | **Frontend** | React 18 + Vite + Tailwind CSS v4 | SPA responsiva de alta performance |
 | **Backend** | Next.js 16 | APIs REST robustas |
 | **Banco de Dados** | PostgreSQL (via Docker) | Persistência de dados relacional |
-| **Autenticação** | bcryptjs + JWT (email/senha) | Sessão com controle de roles (user/manager/admin) |
+| **Autenticação** | Supabase Auth (email/senha) | Sessão com controle de roles (user/manager/admin) via user_metadata |
 | **Estado** | TanStack Query | Gerenciamento de cache e server-state |
 | **UI** | Tailwind CSS v4 + Framer Motion | Design system premium com animações |
 | **Infraestrutura** | Docker | Padronização e isolamento do ambiente |
+| **Auth Provider** | Supabase | signIn, signUp, signOut, onAuthStateChange global |
 
 ---
 
@@ -462,10 +463,61 @@ Admin → Controle total do sistema, auditoria geral, gerir permissões
 
 ---
 
+## 🔐 Autenticação (Supabase Auth)
+
+O frontend utiliza **Supabase Auth** para autenticação profissional com email/senha.
+
+### Configuração
+
+Crie um projeto em [supabase.com](https://supabase.com) e configure as variáveis em `apps/frontend/.env`:
+
+```env
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-anon-key-aqui
+```
+
+### Fluxo de Cadastro (Sign Up)
+1. Usuário preenche nome, e-mail, senha e escolhe role (Membro/Gestor)
+2. `supabase.auth.signUp()` cria a conta com `name` e `role` no `user_metadata`
+3. Tela de **"Verifique seu e-mail"** é exibida com o endereço usado
+4. Usuário clica no link de confirmação do e-mail
+5. Após confirmar, faz login normalmente
+
+### Fluxo de Login (Sign In)
+1. Usuário insere e-mail e senha
+2. `supabase.auth.signInWithPassword()` autentica via Supabase
+3. `onAuthStateChange` atualiza o estado global automaticamente
+4. Usuário é redirecionado para `/rooms`
+
+### Gerenciamento de Sessão
+- **`AuthProvider`** (`src/lib/auth.tsx`): Context global com `user`, `loading`, `signIn`, `signUp`, `signOut`
+- **`onAuthStateChange`**: Listener que sincroniza a sessão em tempo real
+- **`getSession`**: Verifica sessão existente no mount da aplicação
+- **Rotas protegidas**: `_app.tsx` redireciona para `/login` se não autenticado
+- **ACL por role**: Rotas de gestor (`/dashboard`, `/analytics`, `/supplies`) bloqueadas para membros
+
+### Tratamento de Erros (Português)
+| Erro do Supabase | Mensagem exibida |
+| :--- | :--- |
+| `Invalid login credentials` | "Credenciais inválidas. Verifique seu e-mail e senha." |
+| `Email not confirmed` | "E-mail não confirmado. Verifique sua caixa de entrada." |
+| `already registered` | "Este e-mail já está cadastrado." |
+
+### Arquivos
+| Arquivo | Responsabilidade |
+| :--- | :--- |
+| `src/lib/supabaseClient.ts` | Cliente Supabase (URL + anon key) |
+| `src/lib/auth.tsx` | AuthProvider, useAuth, signIn, signUp, signOut |
+| `src/routes/login.tsx` | Tela de login com e-mail/senha |
+| `src/routes/register.tsx` | Tela de cadastro + verificação de e-mail |
+| `src/routes/_app.tsx` | Guard de autenticação + ACL por role |
+
+---
+
 ## 🔒 Segurança
 
-- **Senhas:** Hash com bcryptjs (12 rounds).
-- **Sessão:** Token armazenado em localStorage com persistência.
-- **Validação:** E-mail validado com regex no backend.
-- **ACL:** Rotas protegidas por role (user/manager/admin).
-- **Rate Limit:** Recomendado para rotas de auth em produção.
+- **Senhas:** Hash automático via Supabase (bcrypt).
+- **Sessão:** Gerenciada pelo Supabase com refresh token automático.
+- **Validação:** E-mail validado via Supabase (link de confirmação).
+- **ACL:** Rotas protegidas por role (user/manager/admin) no frontend.
+- **Rate Limit:** Supabase aplica rate limiting nativo nas rotas de auth.

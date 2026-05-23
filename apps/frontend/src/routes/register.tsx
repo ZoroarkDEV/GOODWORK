@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Sparkles, User as UserIcon, Mail, Lock, ArrowRight, ShieldCheck, UserRound, Check } from "lucide-react";
+import { Sparkles, User as UserIcon, Mail, Lock, ArrowRight, ShieldCheck, UserRound, Check, MailCheck, ArrowLeft } from "lucide-react";
 import { AuthShell } from "./login";
 import { useAuth, type Role } from "@/lib/auth";
 
@@ -20,6 +20,8 @@ function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agree, setAgree] = useState(true);
+  const [emailSent, setEmailSent] = useState(false);
+  const [sentTo, setSentTo] = useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,101 +30,143 @@ function RegisterPage() {
     const { error } = await signUp({ name, email, password, role });
     setLoading(false);
     if (error) return toast.error(error);
-    toast.success("Conta criada! Verifique seu e-mail para confirmar.");
-    nav({ to: "/login" });
+    setSentTo(email);
+    setEmailSent(true);
   }
 
   return (
     <AuthShell>
-      <motion.form
-        onSubmit={submit}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-card/80 p-5 backdrop-blur-xl sm:space-y-5 sm:p-8 gw-shadow-luxe"
-      >
-        {/* Brand */}
-        <div className="flex items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-xl gw-gradient-primary gw-shadow-glow sm:size-10">
-            <Sparkles className="size-4 text-primary-foreground sm:size-5" />
-          </span>
-          <span className="text-base font-bold tracking-tight sm:text-lg">
-            GOOD<span className="text-primary">WORK</span>
-          </span>
-        </div>
-
-        <div>
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Crie sua conta</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground sm:mt-1 sm:text-sm">
-            Comece grátis em segundos.
-          </p>
-        </div>
-
-        {/* Role selector */}
-        <div>
-          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
-            Como você vai usar o GOODWORK?
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            <RoleOption
-              active={role === "user"}
-              onClick={() => setRole("user")}
-              icon={UserRound}
-              title="Sou Membro"
-              desc="Reservar salas."
-            />
-            <RoleOption
-              active={role === "manager"}
-              onClick={() => setRole("manager")}
-              icon={ShieldCheck}
-              title="Sou Gestor"
-              desc="Administrar o espaço."
-            />
-          </div>
-        </div>
-
-        {/* Fields */}
-        <div className="space-y-2.5 sm:space-y-3">
-          <Input icon={UserIcon} label="Nome completo" placeholder="Ana Martins" value={name} onChange={(e) => setName(e.target.value)} required />
-          <Input icon={Mail} label="E-mail" type="email" placeholder="voce@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <Input icon={Lock} label="Senha" type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </div>
-
-        {/* Terms */}
-        <label className="flex cursor-pointer items-start gap-2 text-[11px] text-muted-foreground sm:text-[12px]">
-          <span
-            onClick={(e) => { e.preventDefault(); setAgree((v) => !v); }}
-            className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded border ${agree ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface"}`}
+      <AnimatePresence mode="wait">
+        {emailSent ? (
+          <EmailVerificationCard key="verify" email={sentTo} onBack={() => setEmailSent(false)} />
+        ) : (
+          <motion.form
+            key="form"
+            onSubmit={submit}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-card/80 p-5 backdrop-blur-xl sm:space-y-5 sm:p-8 gw-shadow-luxe"
           >
-            {agree && <Check className="size-3" strokeWidth={3} />}
-          </span>
-          <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="sr-only" />
-          <span>
-            Concordo com os{" "}
-            <a className="text-primary hover:underline" href="#">Termos de uso</a> e a{" "}
-            <a className="text-primary hover:underline" href="#">Política de privacidade</a>.
-          </span>
-        </label>
+            {/* Brand */}
+            <div className="flex items-center gap-2">
+              <span className="grid size-9 place-items-center rounded-xl gw-gradient-primary gw-shadow-glow sm:size-10">
+                <Sparkles className="size-4 text-primary-foreground sm:size-5" />
+              </span>
+              <span className="text-base font-bold tracking-tight sm:text-lg">
+                GOOD<span className="text-primary">WORK</span>
+              </span>
+            </div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg gw-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground gw-shadow-glow transition-transform hover:scale-[1.01] disabled:opacity-60"
-        >
-          {loading ? "Criando…" : (
-            <>Criar conta <ArrowRight className="size-4" /></>
-          )}
-        </button>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Crie sua conta</h1>
+              <p className="mt-0.5 text-xs text-muted-foreground sm:mt-1 sm:text-sm">
+                Comece grátis em segundos.
+              </p>
+            </div>
 
-        <p className="text-center text-[11px] text-muted-foreground sm:text-xs">
-          Já tem conta?{" "}
-          <Link to="/login" className="font-semibold text-primary hover:underline">
-            Entrar
-          </Link>
-        </p>
-      </motion.form>
+            {/* Role selector */}
+            <div>
+              <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
+                Como você vai usar o GOODWORK?
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <RoleOption active={role === "user"} onClick={() => setRole("user")} icon={UserRound} title="Sou Membro" desc="Reservar salas." />
+                <RoleOption active={role === "manager"} onClick={() => setRole("manager")} icon={ShieldCheck} title="Sou Gestor" desc="Administrar o espaço." />
+              </div>
+            </div>
+
+            {/* Fields */}
+            <div className="space-y-2.5 sm:space-y-3">
+              <Input icon={UserIcon} label="Nome completo" placeholder="Ana Martins" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input icon={Mail} label="E-mail" type="email" placeholder="voce@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input icon={Lock} label="Senha" type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </div>
+
+            {/* Terms */}
+            <label className="flex cursor-pointer items-start gap-2 text-[11px] text-muted-foreground sm:text-[12px]">
+              <span
+                onClick={(e) => { e.preventDefault(); setAgree((v) => !v); }}
+                className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded border ${agree ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface"}`}
+              >
+                {agree && <Check className="size-3" strokeWidth={3} />}
+              </span>
+              <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="sr-only" />
+              <span>
+                Concordo com os{" "}
+                <a className="text-primary hover:underline" href="#">Termos de uso</a> e a{" "}
+                <a className="text-primary hover:underline" href="#">Política de privacidade</a>.
+              </span>
+            </label>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg gw-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground gw-shadow-glow transition-transform hover:scale-[1.01] disabled:opacity-60"
+            >
+              {loading ? "Criando…" : (
+                <>Criar conta <ArrowRight className="size-4" /></>
+              )}
+            </button>
+
+            <p className="text-center text-[11px] text-muted-foreground sm:text-xs">
+              Já tem conta?{" "}
+              <Link to="/login" className="font-semibold text-primary hover:underline">
+                Entrar
+              </Link>
+            </p>
+          </motion.form>
+        )}
+      </AnimatePresence>
     </AuthShell>
+  );
+}
+
+function EmailVerificationCard({ email, onBack }: { email: string; onBack: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3 }}
+      className="w-full max-w-md space-y-5 rounded-2xl border border-border bg-card/80 p-6 text-center backdrop-blur-xl sm:p-8 gw-shadow-luxe"
+    >
+      {/* Icon */}
+      <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-primary/10 sm:size-20">
+        <MailCheck className="size-8 text-primary sm:size-10" />
+      </div>
+
+      <div>
+        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Verifique seu e-mail</h2>
+        <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
+          Enviamos um link de confirmação para
+        </p>
+        <p className="mt-1 text-sm font-semibold text-foreground break-all sm:text-base">{email}</p>
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Clique no link do e-mail para ativar sua conta. Se não encontrar, verifique a caixa de spam.
+        </p>
+
+        <div className="flex flex-col gap-2">
+          <Link
+            to="/login"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg gw-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground gw-shadow-glow transition-transform hover:scale-[1.01]"
+          >
+            Ir para o login
+          </Link>
+          <button
+            onClick={onBack}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary"
+          >
+            <ArrowLeft className="size-4" /> Voltar ao cadastro
+          </button>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
