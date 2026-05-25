@@ -51,17 +51,47 @@ O sistema utiliza autenticação customizada com bcrypt para hash de senhas e to
 ```text
 GOODWORK/
 ├── apps/
-│   ├── frontend/         # React 18 + Vite SPA
-│   └── backend/          # Next.js 16 API
-├── packages/             # (futuro) Componentes e tipos compartilhados
-├── infra/
-│   └── docker/           # Configuração do banco de dados
-│       └── init/
-│           └── schema.sql  # DDL + seed data
-├── docker-compose.yml         # Ambiente de desenvolvimento
-├── docker-compose.prod.yml    # Ambiente de produção/local
-├── package.json               # Workspaces do monorepo
-└── README.md
+│   ├── frontend/              # React 18 + Vite SPA
+│   │   ├── src/
+│   │   │   ├── components/    # Componentes React reutilizáveis
+│   │   │   │   ├── layout/    # Sidebar, Header
+│   │   │   │   ├── BookingConfirmationPopup.tsx
+│   │   │   │   └── PresenceConfirmationModal.tsx  # Modal Alt+P
+│   │   │   ├── context/       # Contextos React (AuthContext)
+│   │   │   ├── lib/           # Utilitários (auth, api)
+│   │   │   ├── mocks/         # Dados mock para apresentação
+│   │   │   │   └── data.ts    # 6 salas, suprimentos, KPIs, reservas
+│   │   │   ├── routes/        # Rotas TanStack Router
+│   │   │   │   ├── __root.tsx
+│   │   │   │   ├── _app.tsx   # Layout autenticado
+│   │   │   │   ├── index.tsx  # Redirecionamento inicial
+│   │   │   │   ├── login.tsx
+│   │   │   │   ├── register.tsx
+│   │   │   │   ├── forgot-password.tsx
+│   │   │   │   ├── _app.dashboard.tsx
+│   │   │   │   ├── _app.rooms.tsx
+│   │   │   │   ├── _app.bookings.tsx
+│   │   │   │   ├── _app.supplies.tsx
+│   │   │   │   ├── _app.analytics.tsx
+│   │   │   │   ├── _app.settings.tsx
+│   │   │   │   └── _app.notifications.tsx
+│   │   │   ├── main.tsx       # Entry point
+│   │   │   └── styles.css     # Tailwind CSS
+│   │   ├── index.html
+│   │   ├── vite.config.ts
+│   │   ├── tsconfig.app.json
+│   │   ├── package.json
+│   │   ├── Dockerfile
+│   │   └── nginx.conf
+│   └── backend/               # Next.js 16 API
+│       ├── src/app/api/       # API Routes
+│       ├── lib/               # Database, Supabase client
+│       ├── .env
+│       └── package.json
+├── infra/docker/init/         # Scripts SQL de inicialização
+├── docker-compose.yml         # Desenvolvimento
+├── docker-compose.prod.yml    # Produção
+└── package.json               # Workspaces do monorepo
 ```
 
 ---
@@ -213,13 +243,32 @@ docker ps | grep goodwork-postgres
 | `PUT` | `/api/users/:id` | Atualizar perfil |
 
 ---
-## 📦 Estrutura de Pastas
+## 🎮 Funcionalidades para Apresentação
 
-- `apps/frontend/` — Código fonte do frontend React + Vite
-- `apps/backend/` — Código fonte do backend Next.js
-- `infra/docker/init/` — Scripts SQL de inicialização do banco
-- `docker-compose.yml` — Configuração de desenvolvimento
-- `docker-compose.prod.yml` — Configuração de produção
+### Modo Demo (Sem Backend)
+O frontend possui **dados mock integrados** que permitem apresentar o sistema mesmo sem o backend ou banco de dados rodando:
+
+- **Login**: Use qualquer email e senha (ex: `demo@goodwork.com` / `123456`)
+- **Dashboard**: Gráficos com dados mock (ocupação semanal, reservas, receita vs meta)
+- **Salas**: 6 salas com imagens, amenities, preços e disponibilidade
+- **Suprimentos**: Controle de estoque com barras de progresso e itens críticos
+- **Reservas**: Lista de reservas do dia com status
+
+### Atalho Especial: Confirmação de Presença
+Durante a apresentação, pressione **`Alt+P`** para abrir o modal de confirmação de presença:
+- Mostra horário e data atual
+- Animações suaves com Framer Motion
+- Toast de sucesso ao confirmar
+- Fecha automaticamente após confirmação
+
+### Dados Mock Disponíveis
+| Tipo | Quantidade | Descrição |
+| :--- | :--- | :--- |
+| Salas | 6 | Aurora, Boreal, Cosmos, Diamante, Estrela, Futuro |
+| Suprimentos | 10 | Escritório, Copa, Eletrônicos |
+| Reservas | 4 | Confirmadas e pendentes do dia |
+| KPIs | 6 | Ocupação, reservas, receita, cancelamento |
+| Notificações | 3 | Sucesso, warning, info |
 
 ---
 ## 🔧 Configurações de Ambiente
@@ -242,6 +291,9 @@ VITE_API_URL=http://localhost:3000/api
 ---
 ## 🔄 Atualizações Futuras
 
+- [x] Adicionar dados mock para apresentação sem backend
+- [x] Modal de confirmação de presença (Alt+P)
+- [x] Login com fallback mock
 - [ ] Implementar CI/CD com GitHub Actions
 - [ ] Adicionar JWT com assinatura adequada (substituir token base64)
 - [ ] Adicionar refresh tokens

@@ -11,6 +11,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { getDashboardKpis, getRooms } from "@/lib/api";
 import { Link } from "@tanstack/react-router";
+import {
+  mockKpis, mockWeeklyOccupancy, mockCriticalSupplies,
+  mockTodaysBookings, mockRooms,
+} from "@/mocks/data";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
@@ -24,14 +28,16 @@ const item = {
 };
 
 function DashboardPage() {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["dashboard-kpis"],
     queryFn: getDashboardKpis,
+    placeholderData: { kpis: mockKpis, weeklyOccupancy: mockWeeklyOccupancy, criticalSupplies: mockCriticalSupplies, todaysBookings: mockTodaysBookings },
   });
 
-  const { data: rooms = [] } = useQuery({
+  const { data: rooms = mockRooms } = useQuery({
     queryKey: ["rooms"],
     queryFn: getRooms,
+    placeholderData: mockRooms,
   });
 
   if (isLoading) {
@@ -40,17 +46,6 @@ function DashboardPage() {
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <Loader2 className="size-5 animate-spin text-primary" />
           Carregando dashboard…
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="grid min-h-[60vh] place-items-center">
-        <div className="text-center">
-          <p className="text-sm text-destructive">Erro ao carregar dashboard: {(error as Error).message}</p>
-          <p className="mt-2 text-xs text-muted-foreground">Verifique se o backend está rodando em http://localhost:3000</p>
         </div>
       </div>
     );

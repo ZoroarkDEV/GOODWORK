@@ -1,17 +1,4 @@
-import { useEffect } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  Outlet,
-  Link,
-  createRootRouteWithContext,
-  useRouter,
-  HeadContent,
-  Scripts,
-} from "@tanstack/react-router";
-import { Toaster } from "sonner";
-import { AuthProvider } from "@/lib/auth";
-
-import appCss from "../styles.css?url";
+import { Outlet, Link, createRootRoute, useRouter } from "@tanstack/react-router";
 
 function NotFoundComponent() {
   return (
@@ -71,73 +58,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "GOODWORK — Gerenciamento premium de coworking" },
-      { name: "description", content: "Plataforma SaaS para gestão de espaços de coworking: reservas inteligentes, suprimentos e analytics em tempo real." },
-      { name: "theme-color", content: "#0f172a" },
-      { property: "og:title", content: "GOODWORK — Coworking, elevado." },
-      { property: "og:description", content: "Reservas, suprimentos e analytics em uma plataforma luxuosa." },
-      { property: "og:type", content: "website" },
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" },
-    ],
-  }),
-  shellComponent: RootShell,
+export const Route = createRootRoute({
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
 
-function RootShell({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="pt-BR" className="dark">
-      <head>
-        <HeadContent />
-      </head>
-      <body className="min-h-dvh bg-background text-foreground antialiased">
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
-
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
-
-  // Always-on dark mode for GOODWORK (themable per user in /settings later)
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
-
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <main>
-          <Outlet />
-        </main>
-        <Toaster
-          position="top-right"
-          theme="dark"
-          toastOptions={{
-            style: {
-              background: "var(--surface-elevated)",
-              color: "var(--foreground)",
-              border: "1px solid var(--border)",
-              borderRadius: "12px",
-              boxShadow: "var(--shadow-elevated)",
-            },
-          }}
-        />
-      </AuthProvider>
-    </QueryClientProvider>
+    <main>
+      <Outlet />
+    </main>
   );
 }

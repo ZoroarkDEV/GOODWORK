@@ -1,15 +1,37 @@
+import {
+  mockRooms,
+  mockSupplies,
+  mockKpis,
+  mockWeeklyOccupancy,
+  mockCriticalSupplies,
+  mockTodaysBookings,
+  mockNotifications,
+  mockJobTitles,
+  type MockRoom,
+  type MockSupply,
+} from '@/mocks/data';
+
 const API_BASE = '/api';
+const USE_MOCK_FALLBACK = true; // Enable mock fallback when API is unavailable
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
-    throw new Error(err.error || `HTTP ${res.status}`);
+  try {
+    const res = await fetch(`${API_BASE}${url}`, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  } catch (error) {
+    // If API fails and mock fallback is enabled, throw to trigger mock in components
+    if (USE_MOCK_FALLBACK) {
+      throw error; // Let components handle with mock fallback
+    }
+    throw error;
   }
-  return res.json();
 }
 
 // --- Rooms ---

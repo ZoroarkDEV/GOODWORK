@@ -21,5 +21,11 @@
     "supabase"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  },
+  "overrides": {
+    "vite": "^8.0.12"
+  }
 }
