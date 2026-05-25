@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { query } from "@/lib/db";
 
 export async function GET() {
   try {
@@ -10,57 +10,56 @@ export async function GET() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
     // Total active rooms
-    const { count: totalRooms } = await supabase
-      .from("rooms")
-      .select("*", { count: "exact", head: true })
-      .eq("active", true);
+    const totalRoomsResult = await query(
+      "SELECT COUNT(*) as count FROM rooms WHERE active = TRUE;"
+    );
+    const totalRooms = parseInt(totalRoomsResult.rows[0]?.count ?? "0");
 
     // Today's bookings
-    const { data: todaysBookings } = await supabase
-      .from("bookings")
-      .select("id, status")
-      .gte("start_time", todayStart)
-      .lt("start_time", todayEnd);
-
-    const todaysConfirmed = todaysBookings?.filter((b) => b.status === "confirmed").length ?? 0;
-    const todaysPending = todaysBookings?.filter((b) => b.status === "pending").length ?? 0;
+    const todaysBookingsResult = await query(
+      "SELECT id, status FROM bookings WHERE start_time >= $1 AND start_time < $2;",
+      [todayStart, todayEnd]
+    );
+    const todaysBookings = todaysBookingsResult.rows;
+    const todaysConfirmed = todaysBookings.filter((b) => b.status === "confirmed").length;
+    const todaysPending = todaysBookings.filter((b) => b.status === "pending").length;
 
     // Week's bookings for occupancy calculation
-    const { data: weekBookings } = await supabase
-      .from("bookings")
-      .select("start_time, end_time, status")
-      .gte("start_time", weekStart)
-      .in("status", ["confirmed", "pending"]);
+    const weekBookingsResult = await query(
+      "SELECT start_time, end_time, status FROM bookings WHERE start_time >= $1 AND status IN ('confirmed', 'pending');",
+      [weekStart]
+    );
 
     // Calculate occupancy: total booked hours / (rooms * 12 hours * 7 days)
-    const totalBookedHours = weekBookings?.reduce((acc, b) => {
+    const totalBookedHours = weekBookingsResult.rows.reduce((acc, b) => {
       const start = new Date(b.start_time);
       const end = new Date(b.end_time);
       return acc + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    }, 0) ?? 0;
+    }, 0);
 
-    const totalAvailableHours = (totalRooms ?? 0) * 12 * 7; // 12h/day * 7 days
+    const totalAvailableHours = totalRooms * 12 * 7;
     const occupancyRate = totalAvailableHours > 0
       ? Math.round((totalBookedHours / totalAvailableHours) * 100)
       : 0;
 
     // Monthly revenue
-    const { data: monthBookings } = await supabase
-      .from("bookings")
-      .select("total_price, status")
-      .gte("start_time", monthStart)
-      .in("status", ["confirmed", "finished"]);
+    const monthBookingsResult = await query(
+      "SELECT total_price, status FROM bookings WHERE start_time >= $1 AND status IN ('confirmed', 'finished');",
+      [monthStart]
+    );
 
-    const monthlyRevenue = monthBookings?.reduce((acc, b) => acc + (b.total_price ?? 0), 0) ?? 0;
+    const monthlyRevenue = monthBookingsResult.rows.reduce(
+      (acc, b) => acc + (parseFloat(b.total_price) ?? 0), 0
+    );
 
     // Cancellation rate (last 30 days)
-    const { data: allRecentBookings } = await supabase
-      .from("bookings")
-      .select("status")
-      .gte("start_time", weekStart);
+    const allRecentResult = await query(
+      "SELECT status FROM bookings WHERE start_time >= $1;",
+      [weekStart]
+    );
 
-    const totalRecent = allRecentBookings?.length ?? 0;
-    const canceledCount = allRecentBookings?.filter((b) => b.status === "canceled").length ?? 0;
+    const totalRecent = allRecentResult.rows.length;
+    const canceledCount = allRecentResult.rows.filter((b) => b.status === "canceled").length;
     const cancellationRate = totalRecent > 0
       ? Math.round((canceledCount / totalRecent) * 100 * 10) / 10
       : 0;
@@ -73,38 +72,35 @@ export async function GET() {
       const dayStart = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate()).toISOString();
       const dayEnd = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate() + 1).toISOString();
 
-      const { data: dayBookings } = await supabase
-        .from("bookings")
-        .select("start_time, end_time")
-        .gte("start_time", dayStart)
-        .lt("start_time", dayEnd)
-        .in("status", ["confirmed", "pending"]);
+      const dayBookingsResult = await query(
+        "SELECT start_time, end_time FROM bookings WHERE start_time >= $1 AND start_time < $2 AND status IN ('confirmed', 'pending');",
+        [dayStart, dayEnd]
+      );
 
-      const dayHours = dayBookings?.reduce((acc, b) => {
+      const dayHours = dayBookingsResult.rows.reduce((acc, b) => {
         const start = new Date(b.start_time);
         const end = new Date(b.end_time);
         return acc + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-      }, 0) ?? 0;
+      }, 0);
 
-      const dayOccupancy = totalRooms && totalRooms > 0
+      const dayOccupancy = totalRooms > 0
         ? Math.round((dayHours / (totalRooms * 12)) * 100)
         : 0;
 
       weeklyOccupancy.push({
         day: dayNames[dayDate.getDay()],
         ocupacao: Math.min(100, dayOccupancy),
-        reservas: dayBookings?.length ?? 0,
+        reservas: dayBookingsResult.rows.length,
       });
     }
 
     // Critical supplies
-    const { data: allSupplies } = await supabase
-      .from("supplies")
-      .select("id, name, category, quantity, min_threshold, unit")
-      .eq("active", true);
+    const suppliesResult = await query(
+      "SELECT id, name, category, quantity, min_threshold, unit FROM supplies WHERE active = TRUE;"
+    );
 
-    const criticalSupplies = allSupplies
-      ?.filter((s) => s.quantity < s.min_threshold)
+    const criticalSupplies = suppliesResult.rows
+      .filter((s) => s.quantity < s.min_threshold)
       .map((s) => ({
         id: s.id,
         name: s.name,
@@ -112,30 +108,27 @@ export async function GET() {
         stock: s.quantity,
         minStock: s.min_threshold,
         unit: s.unit,
-      })) ?? [];
+      }));
 
     // Recent bookings for today's list
-    const { data: recentTodayBookings } = await supabase
-      .from("bookings")
-      .select("id, start_time, end_time, status, room_id, user_id, notes")
-      .gte("start_time", todayStart)
-      .lt("start_time", todayEnd)
-      .order("start_time", { ascending: true })
-      .limit(10);
+    const recentTodayResult = await query(
+      "SELECT id, start_time, end_time, status, room_id, user_id, notes FROM bookings WHERE start_time >= $1 AND start_time < $2 ORDER BY start_time ASC LIMIT 10;",
+      [todayStart, todayEnd]
+    );
 
     return NextResponse.json({
       kpis: {
         occupancyRate,
-        todaysTotal: todaysBookings?.length ?? 0,
+        todaysTotal: todaysBookings.length,
         todaysConfirmed,
         todaysPending,
         monthlyRevenue,
         cancellationRate,
-        totalRooms: totalRooms ?? 0,
+        totalRooms,
       },
       weeklyOccupancy,
       criticalSupplies,
-      todaysBookings: recentTodayBookings ?? [],
+      todaysBookings: recentTodayResult.rows,
     });
   } catch (error: any) {
     console.error("Dashboard KPIs error:", error);

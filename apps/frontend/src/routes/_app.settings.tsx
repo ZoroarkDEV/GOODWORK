@@ -5,18 +5,12 @@ import { motion } from "framer-motion";
 import { Sun, Moon, Bell, Mail, Globe, Loader2, Check } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { supabase } from "@/lib/supabaseClient";
+import { getJobTitles, updateUserProfile, type ApiJobTitle } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
   head: () => ({ meta: [{ title: "Configurações — GOODWORK" }] }),
 });
-
-interface JobTitle {
-  id: string;
-  name: string;
-  category: string;
-}
 
 function SettingsPage() {
   const { user } = useAuth();
@@ -32,16 +26,7 @@ function SettingsPage() {
 
   const { data: jobTitles = [], isLoading: titlesLoading } = useQuery({
     queryKey: ["job-titles"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("job_titles")
-        .select("id, name, category")
-        .eq("active", true)
-        .order("category", { ascending: true })
-        .order("name", { ascending: true });
-      if (error) throw error;
-      return data as JobTitle[];
-    },
+    queryFn: () => getJobTitles(),
   });
 
   useEffect(() => {
@@ -68,18 +53,11 @@ function SettingsPage() {
     try {
       const title = useCustomTitle ? jobTitleCustom : jobTitles.find((t) => t.id === jobTitleId)?.name || "";
 
-      const { error } = await supabase
-        .from("users")
-        .update({
-          name,
-          job_title: title,
-          notification_email: emailNotif,
-          notification_push: pushNotif,
-          theme: dark ? "dark" : "light",
-        })
-        .eq("id", user.id);
+      await updateUserProfile(user.id, {
+        name,
+        job_title: title,
+      });
 
-      if (error) throw error;
       toast.success("Preferências salvas!");
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar");
@@ -95,7 +73,7 @@ function SettingsPage() {
     .toUpperCase()
     .slice(0, 2);
 
-  const groupedTitles = jobTitles.reduce<Record<string, JobTitle[]>>((acc, t) => {
+  const groupedTitles = jobTitles.reduce<Record<string, ApiJobTitle[]>>((acc, t) => {
     if (!acc[t.category]) acc[t.category] = [];
     acc[t.category].push(t);
     return acc;

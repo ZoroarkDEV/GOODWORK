@@ -139,3 +139,53 @@ export interface DashboardKpis {
 export function getDashboardKpis(): Promise<DashboardKpis> {
   return fetchJson<DashboardKpis>('/dashboard/kpis');
 }
+
+// --- Notifications ---
+export interface ApiNotification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string;
+  read: boolean;
+  metadata: any;
+  created_at: string;
+}
+
+export function getNotifications(userId: string): Promise<ApiNotification[]> {
+  return fetchJson<ApiNotification[]>(`/notifications?user_id=${userId}`);
+}
+
+export function markNotificationRead(id: string): Promise<ApiNotification> {
+  return fetchJson<ApiNotification>(`/notifications`, {
+    method: 'PATCH',
+    body: JSON.stringify({ id, read: true }),
+  });
+}
+
+export function markAllNotificationsRead(ids: string[]): Promise<void> {
+  return fetchJson<void>(`/notifications`, {
+    method: 'PATCH',
+    body: JSON.stringify({ ids, read: true }),
+  });
+}
+
+// --- Job Titles ---
+export interface ApiJobTitle {
+  id: string;
+  name: string;
+  category: string;
+  active: boolean;
+}
+
+export function getJobTitles(): Promise<ApiJobTitle[]> {
+  return fetchJson<ApiJobTitle[]>('/job-titles');
+}
+
+// --- User Profile ---
+export function updateUserProfile(id: string, data: { job_title?: string; name?: string; phone?: string }): Promise<any> {
+  return fetchJson<any>(`/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}

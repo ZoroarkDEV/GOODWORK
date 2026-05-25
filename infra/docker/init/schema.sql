@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS users (
     role user_role NOT NULL DEFAULT 'user',
     phone VARCHAR(20) NULL,
     avatar_url TEXT NULL,
+    job_title VARCHAR(150) NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -142,7 +143,16 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 
--- 7. Tabela: audit_logs (Logs Gerais de Segurança e Auditoria)
+-- 7. Tabela: job_titles (Cargos dos Usuários)
+CREATE TABLE IF NOT EXISTS job_titles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(150) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 8. Tabela: audit_logs (Logs Gerais de Segurança e Auditoria)
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     entity VARCHAR(100) NOT NULL,
@@ -227,3 +237,16 @@ VALUES (
     30,
     'pct'
 ) ON CONFLICT (id) DO NOTHING;
+
+-- Seed 5. Cargos Iniciais para Teste
+INSERT INTO job_titles (id, name, category, active)
+VALUES 
+    ('11111111-1111-1111-1111-111111111111', 'Desenvolvedor', 'Tecnologia', TRUE),
+    ('22222222-2222-2222-2222-222222222222', 'Designer UX/UI', 'Design', TRUE),
+    ('33333333-3333-3333-3333-333333333333', 'Product Manager', 'Gestão', TRUE),
+    ('44444444-4444-4444-4444-444444444444', 'Scrum Master', 'Gestão', TRUE),
+    ('55555555-5555-5555-5555-555555555555', 'Analista de Marketing', 'Marketing', TRUE),
+    ('66666666-6666-6666-6666-666666666666', 'Analista Financeiro', 'Financeiro', TRUE),
+    ('77777777-7777-7777-7777-777777777777', 'Administrador', 'Administrativo', TRUE),
+    ('88888888-8888-8888-8888-888888888888', 'Recepcionista', 'Administrativo', TRUE)
+ON CONFLICT (id) DO NOTHING;

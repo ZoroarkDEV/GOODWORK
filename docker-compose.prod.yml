@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: goodwork-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: goodwork_db
+      POSTGRES_USER: goodwork_admin
+      POSTGRES_PASSWORD: goodwork_secure_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/docker/init:/docker-entrypoint-initdb.d
+    networks:
+      - goodwork-network
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: goodwork-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://goodwork_admin:goodwork_secure_pass@postgres:5432/goodwork_db
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    depends_on:
+      - postgres
+    networks:
+      - goodwork-network
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: goodwork-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - goodwork-network
+
+volumes:
+  postgres_data:
+
+networks:
+  goodwork-network:
+    driver: bridge

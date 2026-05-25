@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@next/swc-win32-x64-msvc": "^14.2.33",
     "@supabase/supabase-js": "^2.106.1",
     "bcryptjs": "^3.0.3",
     "pg": "^8.21.0",

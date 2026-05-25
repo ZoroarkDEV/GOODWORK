@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CalendarCheck, Clock, MapPin, X } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { getBookings, getRoom } from "@/lib/api";
 
 interface UpcomingBooking {
   id: string;
@@ -24,42 +24,49 @@ export function BookingConfirmationPopup() {
 
     // Check for upcoming bookings within the next hour
     const checkBookings = async () => {
-      const now = new Date();
-      const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+      try {
+        const now = new Date();
+        const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
 
-      const { data } = await supabase
-        .from("bookings")
-        .select("id, room_id, start_time, end_time")
-        .eq("user_id", user.id)
-        .eq("status", "confirmed")
-        .gte("start_time", now.toISOString())
-        .lte("start_time", oneHourFromNow.toISOString())
-        .limit(1);
+        const bookings = await getBookings();
+        const upcoming = bookings.filter(
+          (b) =>
+            b.user_id === user.id &&
+            b.status === "confirmed" &&
+            new Date(b.start_time) >= now &&
+            new Date(b.start_time) <= oneHourFromNow
+        );
 
-      if (!data || data.length === 0) {
+        if (upcoming.length === 0) {
+          setShowPopup(false);
+          setBooking(null);
+          return;
+        }
+
+        const b = upcoming[0];
+        if (confirmed.has(b.id)) return;
+
+        // Get room name
+        let roomName = "Sala";
+        try {
+          const room = await getRoom(b.room_id);
+          roomName = room.name;
+        } catch {
+          // Use default name
+        }
+
+        setBooking({
+          id: b.id,
+          roomName,
+          startTime: new Date(b.start_time),
+          endTime: new Date(b.end_time),
+          roomId: b.room_id,
+        });
+        setShowPopup(true);
+      } catch {
         setShowPopup(false);
         setBooking(null);
-        return;
       }
-
-      const b = data[0];
-      if (confirmed.has(b.id)) return;
-
-      // Get room name
-      const { data: roomData } = await supabase
-        .from("rooms")
-        .select("name")
-        .eq("id", b.room_id)
-        .single();
-
-      setBooking({
-        id: b.id,
-        roomName: roomData?.name ?? "Sala",
-        startTime: new Date(b.start_time),
-        endTime: new Date(b.end_time),
-        roomId: b.room_id,
-      });
-      setShowPopup(true);
     };
 
     // Check immediately and then every 30 seconds
@@ -71,19 +78,7 @@ export function BookingConfirmationPopup() {
   function handleConfirm() {
     if (!booking) return;
     setConfirmed((prev) => new Set(prev).add(booking.id));
-
-    // Create notification about confirmation
-    supabase.from("notifications").insert({
-      user_id: user!.id,
-      type: "booking",
-      title: "Presença confirmada",
-      message: `Você confirmou presença na ${booking.roomName} às ${booking.startTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
-      metadata: { booking_id: booking.id },
-      read: false,
-    }).then(() => {
-      toast.success("Presença confirmada!");
-    });
-
+    toast.success("Presença confirmada!");
     setShowPopup(false);
   }
 

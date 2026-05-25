@@ -6,7 +6,6 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { supabase } from "./supabaseClient";
 
 export type Role = "user" | "manager" | "admin";
 
@@ -32,71 +31,70 @@ type AuthCtx = {
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
-function mapSupabaseUser(session: any): GWUser | null {
-  if (!session?.user) return null;
-  const u = session.user;
-  return {
-    id: u.id,
-    email: u.email ?? "",
-    name: u.user_metadata?.name ?? u.email?.split("@")[0] ?? "Usuário",
-    role: (u.user_metadata?.role as Role) ?? "user",
-  };
+const TOKEN_KEY = "goodwork_token";
+const USER_KEY = "goodwork_user";
+
+function getStoredUser(): GWUser | null {
+  try {
+    const stored = localStorage.getItem(USER_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeSession(token: string, user: GWUser) {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+function clearSession() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<GWUser | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check existing session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(mapSupabaseUser(session));
-      setLoading(false);
-    });
-
-    // Listen for auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(mapSupabaseUser(session));
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const [user, setUser] = useState<GWUser | null>(getStoredUser);
+  const [loading, setLoading] = useState(false);
 
   const signIn: AuthCtx["signIn"] = useCallback(async ({ email, password }) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      // Map common Supabase errors to friendly Portuguese messages
-      const msg = error.message.includes("Invalid login credentials")
-        ? "Credenciais inválidas. Verifique seu e-mail e senha."
-        : error.message.includes("Email not confirmed")
-          ? "E-mail não confirmado. Verifique sua caixa de entrada."
-          : error.message;
-      return { error: msg };
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { error: data.error || "Erro ao fazer login." };
+      }
+      storeSession(data.token, data.user);
+      setUser(data.user);
+      return { error: null };
+    } catch {
+      return { error: "Erro de conexão com o servidor." };
     }
-    return { error: null };
   }, []);
 
   const signUp: AuthCtx["signUp"] = useCallback(async ({ name, email, password, role }) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, role },
-      },
-    });
-    if (error) {
-      const msg = error.message.includes("already registered")
-        ? "Este e-mail já está cadastrado."
-        : error.message;
-      return { error: msg };
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, role }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { error: data.error || "Erro ao registrar." };
+      }
+      return { error: null };
+    } catch {
+      return { error: "Erro de conexão com o servidor." };
     }
-    return { error: null };
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    clearSession();
     setUser(null);
   }, []);
 

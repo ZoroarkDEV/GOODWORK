@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { query } from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
@@ -10,15 +10,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "user_id é obrigatório" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(50);
+    const result = await query(
+      "SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50;",
+      [userId]
+    );
 
-    if (error) throw error;
-    return NextResponse.json(data ?? []);
+    return NextResponse.json(result.rows ?? []);
   } catch (error: any) {
     console.error("Notifications error:", error);
     return NextResponse.json({ error: "Erro ao buscar notificações" }, { status: 500 });
@@ -34,21 +31,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Dados incompletos" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
-      .from("notifications")
-      .insert({
+    const result = await query(
+      `INSERT INTO notifications (user_id, type, title, message, metadata, read)
+       VALUES ($1, $2, $3, $4, $5, FALSE)
+       RETURNING *;`,
+      [
         user_id,
-        type: type || "general",
+        type || "general",
         title,
-        message: message || "",
-        metadata: metadata || {},
-        read: false,
-      })
-      .select()
-      .single();
+        message || "",
+        JSON.stringify(metadata || {}),
+      ]
+    );
 
-    if (error) throw error;
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(result.rows[0], { status: 201 });
   } catch (error: any) {
     console.error("Create notification error:", error);
     return NextResponse.json({ error: "Erro ao criar notificação" }, { status: 500 });
@@ -64,15 +60,16 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Dados incompletos" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
-      .from("notifications")
-      .update({ read })
-      .eq("id", id)
-      .select()
-      .single();
+    const result = await query(
+      "UPDATE notifications SET read = $1 WHERE id = $2 RETURNING *;",
+      [read, id]
+    );
 
-    if (error) throw error;
-    return NextResponse.json(data);
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Notificação não encontrada" }, { status: 404 });
+    }
+
+    return NextResponse.json(result.rows[0]);
   } catch (error: any) {
     console.error("Update notification error:", error);
     return NextResponse.json({ error: "Erro ao atualizar notificação" }, { status: 500 });

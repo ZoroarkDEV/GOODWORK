@@ -3,10 +3,10 @@ import { query } from '@/lib/db';
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Check if room exists
     const checkResult = await query('SELECT id FROM rooms WHERE id = $1;', [id]);

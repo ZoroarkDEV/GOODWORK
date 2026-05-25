@@ -1,20 +1,27 @@
 import { Pool } from 'pg';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://goodwork_admin:goodwork_secure_pass@localhost:5432/goodwork_db';
+let pool: Pool | null = null;
 
-const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+function getPool(): Pool {
+  if (!pool) {
+    const connectionString = process.env.DATABASE_URL || 'postgresql://goodwork_admin:goodwork_secure_pass@postgres:5432/goodwork_db';
+    const separator = connectionString.includes('?') ? '&' : '?';
+    const sslMode = process.env.DB_SSL === 'true' ? 'require' : 'disable';
+    const finalConnectionString = `${connectionString}${separator}sslmode=${sslMode}`;
 
-const pool = new Pool({
-  connectionString,
-  ssl: (process.env.NODE_ENV === 'production' && !isLocal) ? { rejectUnauthorized: false } : false
-});
+    pool = new Pool({
+      connectionString: finalConnectionString,
+    });
+  }
+  return pool;
+}
 
 export async function query(text: string, params?: any[]) {
   const start = Date.now();
-  const res = await pool.query(text, params);
+  const res = await getPool().query(text, params);
   const duration = Date.now() - start;
   console.log('Executed query:', { text, duration, rowsCount: res.rowCount });
   return res;
 }
 
-export default pool;
+export default getPool;
