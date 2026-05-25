@@ -35,14 +35,6 @@ const AuthContext = createContext<AuthCtx | null>(null);
 const TOKEN_KEY = "goodwork_token";
 const USER_KEY = "goodwork_user";
 
-// Mock user for presentation (fallback when API is unavailable)
-const MOCK_USER: GWUser = {
-  id: "user-demo-001",
-  email: "demo@goodwork.com",
-  name: "Demo User",
-  role: "manager",
-};
-
 function getStoredUser(): GWUser | null {
   try {
     const stored = localStorage.getItem(USER_KEY);
@@ -75,7 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn: AuthCtx["signIn"] = useCallback(async ({ email, password }) => {
     setLoading(true);
     try {
-      // Try API first
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -88,25 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return { error: null };
       }
-    } catch {
-      // API not available, use mock
-    }
-
-    // Mock login for presentation (any email/password works)
-    if (email && password) {
-      const mockUser: GWUser = { ...MOCK_USER, email, name: email.split("@")[0] };
-      storeSession("mock-token-demo", mockUser);
-      setUser(mockUser);
       setLoading(false);
-      return { error: null };
+      return { error: data.error || "Credenciais inválidas." };
+    } catch {
+      setLoading(false);
+      return { error: "Erro de conexão com o servidor. Verifique se o backend está rodando." };
     }
-
-    setLoading(false);
-    return { error: "Email e senha são obrigatórios." };
   }, []);
 
   const signUp: AuthCtx["signUp"] = useCallback(async ({ name, email, password, role }) => {
-    // Try API first
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -117,19 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         return { error: null };
       }
+      return { error: data.error || "Erro ao registrar." };
     } catch {
-      // API not available, use mock
+      return { error: "Erro de conexão com o servidor. Verifique se o backend está rodando." };
     }
-
-    // Mock register for presentation
-    if (name && email && password) {
-      const mockUser: GWUser = { id: "user-demo-" + Date.now(), email, name, role: role || "manager" };
-      storeSession("mock-token-demo", mockUser);
-      setUser(mockUser);
-      return { error: null };
-    }
-
-    return { error: "Todos os campos são obrigatórios." };
   }, []);
 
   const signOut = useCallback(async () => {
