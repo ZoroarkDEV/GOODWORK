@@ -34,6 +34,12 @@ type AuthCtx = {
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
+// Demo credentials for presentation bypass
+const DEMO_CREDENTIALS = [
+  { email: "admin@goodwork.com", password: "admin123", role: "manager" as Role, name: "Administrador GOODWORK" },
+  { email: "gerente@goodwork.com", password: "manager123", role: "manager" as Role, name: "Gerente Operacional" },
+];
+
 function mapSupabaseUser(supabaseUser: any, role: Role = "user"): GWUser {
   return {
     id: supabaseUser.id,
@@ -76,10 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchUserProfile(supabaseUser: any) {
     try {
-      // Try to get role from user metadata first
       let role: Role = supabaseUser.user_metadata?.role || "user";
 
-      // If no role in metadata, try to fetch from database
       if (!supabaseUser.user_metadata?.role) {
         const { data: dbUser } = await supabase
           .from("users")
@@ -108,6 +112,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signIn: AuthCtx["signIn"] = useCallback(async ({ email, password }) => {
+    // CORREÇÃO 3: Mock bypass for presentation
+    // Check if demo credentials are being used
+    const demoUser = DEMO_CREDENTIALS.find(
+      (cred) => cred.email.toLowerCase() === email.toLowerCase().trim() && cred.password === password
+    );
+
+    if (demoUser) {
+      // Create a mock session for presentation
+      const mockUser: GWUser = {
+        id: `demo-${demoUser.role}-${Date.now()}`,
+        email: demoUser.email,
+        name: demoUser.name,
+        role: demoUser.role,
+        emailVerified: true,
+      };
+      
+      // Store mock token in localStorage
+      localStorage.setItem("goodwork_token", "mock-demo-token-" + Date.now());
+      localStorage.setItem("goodwork_user", JSON.stringify(mockUser));
+      
+      setUser(mockUser);
+      setLoading(false);
+      return { error: null };
+    }
+
+    // Normal Supabase login flow
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase().trim(),
@@ -115,7 +145,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        // Map Supabase errors to Portuguese
+        // CORREÇÃO 2: Clean up on any error
+        localStorage.removeItem("goodwork_token");
+        localStorage.removeItem("goodwork_user");
+        setUser(null);
+
         const errorMessages: Record<string, string> = {
           "Invalid login credentials": "Credenciais inválidas. Verifique seu e-mail e senha.",
           "Email not confirmed": "E-mail não verificado. Por favor, confirme seu e-mail antes de fazer login.",
@@ -127,6 +161,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { error: null };
     } catch (error: any) {
+      // CORREÇÃO 2: Clean up on connection error
+      localStorage.removeItem("goodwork_token");
+      localStorage.removeItem("goodwork_user");
+      setUser(null);
+      
       return { error: "Erro de conexão com o servidor." };
     }
   }, []);
@@ -155,10 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: errorMessages[error.message] || error.message };
       }
 
-      // Supabase sends confirmation email automatically
-      // If email confirmation is required, user needs to verify
-      const needsVerification = !data.session; // No session means email confirmation required
-
+      const needsVerification = !data.session;
       return { error: null, needsEmailVerification: needsVerification };
     } catch (error: any) {
       return { error: "Erro de conexão com o servidor." };
@@ -166,8 +202,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    // Clean up localStorage first
+    localStorage.removeItem("goodwork_token");
+    localStorage.removeItem("goodwork_user");
     setUser(null);
+    
+    // Then sign out from Supabase
+    await supabase.auth.signOut();
   }, []);
 
   const resetPasswordForEmail = useCallback(async (email: string) => {
@@ -204,7 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider />");
+    throw new Error("useAuth must be used within an <AuthProvider />");
   }
   return context;
 }
