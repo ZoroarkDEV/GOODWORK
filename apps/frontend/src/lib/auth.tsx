@@ -27,6 +27,7 @@ type AuthCtx = {
     role: Role;
   }) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<{ error: string | null }>;
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -98,8 +99,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const resetPasswordForEmail = useCallback(async (email: string) => {
+    try {
+      // TODO: Implement password reset API call
+      // For now, just simulate success
+      console.log("Password reset requested for:", email);
+      return { error: null };
+    } catch {
+      return { error: "Erro de conexão com o servidor." };
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, resetPasswordForEmail }}>
       {children}
     </AuthContext.Provider>
   );
