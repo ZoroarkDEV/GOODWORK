@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_url TEXT NULL,
     job_title VARCHAR(150) NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE,
+    email_verified BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -52,6 +53,20 @@ CREATE TRIGGER trigger_update_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- 1.1. Tabela: email_verification_tokens (Tokens de Verificação de E-mail)
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index for faster token lookups
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_token ON email_verification_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id ON email_verification_tokens(user_id);
 
 
 -- 2. Tabela: rooms (Salas de Reunião / Coworking)
@@ -169,19 +184,22 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 -- ============================================================================
 
 -- Seed 1. Administrador Padrão (Senha fictícia criptografada com bcrypt para 'admin123')
-INSERT INTO users (id, name, email, password_hash, role, phone, active)
+-- email_verified = TRUE para seed data (admin pré-verificado)
+INSERT INTO users (id, name, email, password_hash, role, phone, active, email_verified)
 VALUES (
     'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
     'Administrador GOODWORK',
     'admin@goodwork.com',
-    '$2b$12$6K7r47X/v1iK/rF5D5/B3OtDskhA6P4Jj2k/L4hF2v5O6P2B2B.qK', -- bcrypt for 'admin123'
+    '$2b$12$6K7r47X/v1iK/rF5D5/B3OtDskhA6P4Jj2k/L4hF2v5O6P2B2B.qK',
     'admin',
     '(11) 99999-9999',
+    TRUE,
     TRUE
 ) ON CONFLICT (email) DO NOTHING;
 
 -- Seed 2. Manager Padrão (Senha fictícia criptografada com bcrypt para 'manager123')
-INSERT INTO users (id, name, email, password_hash, role, phone, active)
+-- email_verified = TRUE para seed data (manager pré-verificado)
+INSERT INTO users (id, name, email, password_hash, role, phone, active, email_verified)
 VALUES (
     'b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e',
     'Gerente Operacional',
@@ -189,6 +207,7 @@ VALUES (
     '$2b$12$6K7r47X/v1iK/rF5D5/B3OtDskhA6P4Jj2k/L4hF2v5O6P2B2B.qK',
     'manager',
     '(11) 88888-8888',
+    TRUE,
     TRUE
 ) ON CONFLICT (email) DO NOTHING;
 
@@ -202,7 +221,7 @@ VALUES (
     150.00,
     '/images/rooms/room-01/cover.webp',
     '["tv", "wifi", "videoconferencia", "quadro", "cafeteira"]'::jsonb
-) ON CONFLICT (id) DO NOTHING;
+) ON CONFLICT (id) DO NOT NOTHING;
 
 INSERT INTO rooms (id, name, description, capacity, hourly_rate, image_url, amenities)
 VALUES (

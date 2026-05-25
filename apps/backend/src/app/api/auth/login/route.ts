@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export async function POST(request: Request) {
   try {
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     // Find user by email
     const result = await query(
-      'SELECT id, name, email, password_hash, role, active FROM users WHERE email = $1;',
+      'SELECT id, name, email, password_hash, role, active, email_verified FROM users WHERE email = $1;',
       [email.toLowerCase()]
     );
 
@@ -38,14 +38,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = result.rows.length > 0 ? result.rows[0] : null;
-    if (!user) {
-      return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 });
-    }
+    const user = result.rows[0];
 
     if (!user.active) {
       return NextResponse.json(
         { error: 'Usuário inativo. Contate o administrador.' },
+        { status: 403 }
+      );
+    }
+
+    // Check if email is verified - BLOCK login if not verified
+    if (!user.email_verified) {
+      return NextResponse.json(
+        { 
+          error: 'E-mail não verificado. Por favor, verifique seu e-mail antes de fazer login.',
+          code: 'EMAIL_NOT_VERIFIED',
+          email: user.email,
+        },
         { status: 403 }
       );
     }
@@ -69,6 +78,7 @@ export async function POST(request: Request) {
         name: user.name,
         email: user.email,
         role: user.role,
+        email_verified: user.email_verified,
       },
       token,
     }, { status: 200 });

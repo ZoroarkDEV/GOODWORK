@@ -6,6 +6,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { supabase } from "./supabaseClient";
 
 export type Role = "user" | "manager" | "admin";
 
@@ -14,6 +15,7 @@ export type GWUser = {
   email: string;
   name: string;
   role: Role;
+  emailVerified: boolean;
 };
 
 type AuthCtx = {
@@ -25,93 +27,158 @@ type AuthCtx = {
     email: string;
     password: string;
     role: Role;
-  }) => Promise<{ error: string | null }>;
+  }) => Promise<{ error: string | null; needsEmailVerification?: boolean }>;
   signOut: () => Promise<void>;
   resetPasswordForEmail: (email: string) => Promise<{ error: string | null }>;
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
-const TOKEN_KEY = "goodwork_token";
-const USER_KEY = "goodwork_user";
-
-function getStoredUser(): GWUser | null {
-  try {
-    const stored = localStorage.getItem(USER_KEY);
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
-}
-
-function storeSession(token: string, user: GWUser) {
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
-}
-
-function clearSession() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+function mapSupabaseUser(supabaseUser: any, role: Role = "user"): GWUser {
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email || "",
+    name: supabaseUser.user_metadata?.name || supabaseUser.email?.split("@")[0] || "Usuário",
+    role: supabaseUser.user_metadata?.role || role,
+    emailVerified: !!supabaseUser.email_confirmed_at,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<GWUser | null>(getStoredUser);
-  const [loading, setLoading] = useState(true); // Start as true to prevent flash
+  const [user, setUser] = useState<GWUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Simulate initial auth check
+  // Listen to auth state changes
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 100);
-    return () => clearTimeout(timer);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchUserProfile(session.user);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          await fetchUserProfile(session.user);
+        } else {
+          setUser(null);
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const signIn: AuthCtx["signIn"] = useCallback(async ({ email, password }) => {
-    setLoading(true);
+  async function fetchUserProfile(supabaseUser: any) {
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        storeSession(data.token, data.user);
-        setUser(data.user);
-        setLoading(false);
-        return { error: null };
+      // Try to get role from user metadata first
+      let role: Role = supabaseUser.user_metadata?.role || "user";
+
+      // If no role in metadata, try to fetch from database
+      if (!supabaseUser.user_metadata?.role) {
+        const { data: dbUser } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", supabaseUser.id)
+          .single();
+        
+        if (dbUser?.role) {
+          role = dbUser.role as Role;
+        }
       }
+
+      setUser({
+        id: supabaseUser.id,
+        email: supabaseUser.email || "",
+        name: supabaseUser.user_metadata?.name || supabaseUser.email?.split("@")[0] || "Usuário",
+        role,
+        emailVerified: !!supabaseUser.email_confirmed_at,
+      });
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      setUser(mapSupabaseUser(supabaseUser));
+    } finally {
       setLoading(false);
-      return { error: data.error || "Credenciais inválidas." };
-    } catch {
-      setLoading(false);
-      return { error: "Erro de conexão com o servidor. Verifique se o backend está rodando." };
+    }
+  }
+
+  const signIn: AuthCtx["signIn"] = useCallback(async ({ email, password }) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password,
+      });
+
+      if (error) {
+        // Map Supabase errors to Portuguese
+        const errorMessages: Record<string, string> = {
+          "Invalid login credentials": "Credenciais inválidas. Verifique seu e-mail e senha.",
+          "Email not confirmed": "E-mail não verificado. Por favor, confirme seu e-mail antes de fazer login.",
+          "Invalid email": "Formato de e-mail inválido.",
+          "Too many requests": "Muitas tentativas. Aguarde alguns minutos.",
+        };
+        return { error: errorMessages[error.message] || error.message };
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: "Erro de conexão com o servidor." };
     }
   }, []);
 
   const signUp: AuthCtx["signUp"] = useCallback(async ({ name, email, password, role }) => {
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
+      const { error, data } = await supabase.auth.signUp({
+        email: email.toLowerCase().trim(),
+        password,
+        options: {
+          data: {
+            name,
+            role,
+          },
+          emailRedirectTo: `${window.location.origin}/verify-email`,
+        },
       });
-      const data = await res.json();
-      if (res.ok) {
-        return { error: null };
+
+      if (error) {
+        const errorMessages: Record<string, string> = {
+          "User already registered": "Este e-mail já está cadastrado.",
+          "Invalid email": "Formato de e-mail inválido.",
+          "Password should be at least 6 characters": "A senha deve ter no mínimo 6 caracteres.",
+          "Too many requests": "Muitas tentativas. Aguarde alguns minutos.",
+        };
+        return { error: errorMessages[error.message] || error.message };
       }
-      return { error: data.error || "Erro ao registrar." };
-    } catch {
-      return { error: "Erro de conexão com o servidor. Verifique se o backend está rodando." };
+
+      // Supabase sends confirmation email automatically
+      // If email confirmation is required, user needs to verify
+      const needsVerification = !data.session; // No session means email confirmation required
+
+      return { error: null, needsEmailVerification: needsVerification };
+    } catch (error: any) {
+      return { error: "Erro de conexão com o servidor." };
     }
   }, []);
 
   const signOut = useCallback(async () => {
-    clearSession();
+    await supabase.auth.signOut();
     setUser(null);
   }, []);
 
   const resetPasswordForEmail = useCallback(async (email: string) => {
     try {
-      console.log("Password reset requested for:", email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
       return { error: null };
     } catch {
       return { error: "Erro de conexão com o servidor." };
@@ -119,16 +186,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, resetPasswordForEmail }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        signIn,
+        signUp,
+        signOut,
+        resetPasswordForEmail,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within <AuthProvider />");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider />");
+  }
+  return context;
 }
 
 /** Manager-only routes */

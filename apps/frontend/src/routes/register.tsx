@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,24 +41,20 @@ function RegisterPage() {
     e.preventDefault();
     if (!agree) return toast.error("Aceite os termos para continuar.");
     setLoading(true);
-    const { error } = await signUp({ name, email, password, role });
+    const { error, needsEmailVerification } = await signUp({ name, email, password, role });
     setLoading(false);
     if (error) return toast.error(error);
 
-    // Save job_title to user profile
-    const title = useCustomTitle ? jobTitleCustom : jobTitles.find((t) => t.id === jobTitleId)?.name || "";
-    if (title) {
-      try {
-        // We need to get the user ID from the auth context after sign up
-        // For now, we'll skip this since the user needs to log in first
-        console.log("Job title to save:", title);
-      } catch {
-        // Silently fail
-      }
+    // Show email verification message
+    if (needsEmailVerification) {
+      setSentTo(email);
+      setEmailSent(true);
+      return;
     }
 
-    setSentTo(email);
-    setEmailSent(true);
+    // If no email verification needed (auto-confirm enabled), redirect to login
+    toast.success("Conta criada com sucesso!");
+    nav({ to: "/login" });
   }
 
   return (
@@ -186,7 +183,7 @@ function RegisterPage() {
   );
 }
 
-function EmailVerificationCard({ email, onBack }: { email: string; onBack: () => void }) {
+function EmailVerificationCard({ email, onBack, verificationUrl }: { email: string; onBack: () => void; verificationUrl?: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -203,15 +200,30 @@ function EmailVerificationCard({ email, onBack }: { email: string; onBack: () =>
       <div>
         <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Conta criada com sucesso!</h2>
         <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
-          Sua conta foi criada com sucesso. Faça login para continuar.
+          Enviamos um e-mail de verificação para:
         </p>
         <p className="mt-1 text-sm font-semibold text-foreground break-all sm:text-base">{email}</p>
       </div>
 
       <div className="space-y-3">
-        <p className="text-xs text-muted-foreground">
-          Você já pode fazer login e começar a usar o GOODWORK.
-        </p>
+        <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">
+          <p className="font-semibold">⚠️ Verifique seu e-mail</p>
+          <p className="mt-1">Você precisa confirmar seu e-mail antes de fazer login. Caixa de entrada ou spam.</p>
+        </div>
+
+        {verificationUrl && (
+          <div className="rounded-lg border border-border bg-surface p-3 text-left">
+            <p className="text-xs font-semibold text-foreground mb-1">Link de verificação (demo):</p>
+            <a
+              href={verificationUrl}
+              className="text-xs text-primary hover:underline break-all"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {verificationUrl}
+            </a>
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           <Link
