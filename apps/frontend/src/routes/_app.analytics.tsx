@@ -7,7 +7,7 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   BarChart, Bar, PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { revenueMonthly, occupancyWeekly, rooms } from "@/lib/mock-data";
+import { mockRevenueData, mockBookingsPerDay, mockRooms } from "@/mocks/data";
 
 export const Route = createFileRoute("/_app/analytics")({
   component: AnalyticsPage,
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_app/analytics")({
 });
 
 const periods = ["7d", "30d", "90d", "Custom"];
-const roomShare = rooms.map((r, i) => ({ name: r.name, value: 40 - i * 5 + (i * 3) }));
+const roomShare = mockRooms.map((r, i) => ({ name: r.name, value: 40 - i * 5 + (i * 3) }));
 const COLORS = ["var(--color-primary)", "var(--color-accent)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)", "var(--color-warning)"];
 
 function AnalyticsPage() {
@@ -85,7 +85,7 @@ function AnalyticsPage() {
           <h2 className="mb-4 text-base font-semibold">Receita mensal vs. meta</h2>
           <div className="h-[300px]">
             <ResponsiveContainer>
-              <AreaChart data={revenueMonthly} margin={{ left: -10, right: 8, top: 8, bottom: 0 }}>
+              <AreaChart data={mockRevenueData} margin={{ left: -10, right: 8, top: 8, bottom: 0 }}>
                 <defs>
                   <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.4} />
@@ -123,7 +123,7 @@ function AnalyticsPage() {
         <h2 className="mb-4 text-base font-semibold">Reservas por dia da semana</h2>
         <div className="h-[260px]">
           <ResponsiveContainer>
-            <BarChart data={occupancyWeekly} margin={{ left: -10, right: 8, top: 8, bottom: 0 }}>
+            <BarChart data={mockBookingsPerDay} margin={{ left: -10, right: 8, top: 8, bottom: 0 }}>
               <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="day" stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
               <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />

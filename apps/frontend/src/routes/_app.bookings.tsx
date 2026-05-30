@@ -2,9 +2,9 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Plus, ChevronLeft, ChevronRight, X, Clock, MapPin, Users, Calendar } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, X, Clock, MapPin, Calendar } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getBookings, createBooking, cancelBooking, getRooms, type ApiBooking, type ApiRoom } from "@/lib/api";
+import { getBookings, createBooking, cancelBooking, getRooms, type ApiRoom } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/bookings")({
@@ -53,6 +53,20 @@ function BookingsPage() {
       toast.error(err.message || "Erro ao cancelar reserva");
     },
   });
+
+  // Blindagem: evita renderizar o calendário antes dos dados carregarem
+  if (bookingsLoading) {
+    return (
+      <div className="mx-auto max-w-[1400px] space-y-6 p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-48 rounded-lg bg-surface" />
+          <div className="h-64 rounded-xl bg-surface" />
+          <div className="h-32 rounded-xl bg-surface" />
+        </div>
+        <p className="text-center text-sm text-muted-foreground animate-pulse">Carregando agendamentos...</p>
+      </div>
+    );
+  }
 
   function handleCreate(data: { room_id: string; start_time: string; end_time: string; notes?: string }) {
     if (!user) return toast.error("Usuário não autenticado");
@@ -137,14 +151,8 @@ function BookingsPage() {
 
       {/* Bookings list */}
       <div className="rounded-xl border border-border bg-card p-3 sm:p-5 gw-shadow-soft">
-        <h2 className="mb-3 sm:mb-4 text-sm sm:text-base font-semibold">Minhas reservas ({bookings.length})</h2>
-        {bookingsLoading ? (
-          <div className="space-y-2 sm:space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-14 sm:h-16 animate-pulse rounded-lg bg-surface" />
-            ))}
-          </div>
-        ) : bookings.length === 0 ? (
+        <h2 className="mb-3 sm:mb-4 text-sm sm:text-base font-semibold">Minhas reservas ({(bookings ?? []).length})</h2>
+        {(bookings ?? []).length === 0 ? (
           <div className="py-6 sm:py-8 text-center">
             <Calendar className="mx-auto size-8 sm:size-10 text-muted-foreground" />
             <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-muted-foreground">Nenhuma reserva encontrada.</p>
@@ -157,7 +165,7 @@ function BookingsPage() {
           </div>
         ) : (
           <ul className="divide-y divide-border">
-            {bookings.map((b) => {
+            {(bookings ?? []).map((b) => {
               const room = rooms.find((r) => r.id === b.room_id);
               const startDate = new Date(b.start_time);
               const endDate = new Date(b.end_time);

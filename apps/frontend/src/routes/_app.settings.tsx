@@ -6,6 +6,7 @@ import { Sun, Moon, Bell, Mail, Globe, Loader2, Check } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { getJobTitles, updateUserProfile, type ApiJobTitle } from "@/lib/api";
+import { mockJobTitles } from "@/mocks/data";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -24,9 +25,10 @@ function SettingsPage() {
   const [jobTitleCustom, setJobTitleCustom] = useState("");
   const [useCustomTitle, setUseCustomTitle] = useState(false);
 
-  const { data: jobTitles = [], isLoading: titlesLoading } = useQuery({
+  const { data: jobTitles = mockJobTitles as any[], isLoading: titlesLoading } = useQuery({
     queryKey: ["job-titles"],
     queryFn: () => getJobTitles(),
+    placeholderData: mockJobTitles,
   });
 
   useEffect(() => {

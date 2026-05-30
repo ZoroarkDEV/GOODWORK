@@ -1,16 +1,3 @@
-import {
-  mockRooms,
-  mockSupplies,
-  mockKpis,
-  mockWeeklyOccupancy,
-  mockCriticalSupplies,
-  mockTodaysBookings,
-  mockNotifications,
-  mockJobTitles,
-  type MockRoom,
-  type MockSupply,
-} from '@/mocks/data';
-
 const API_BASE = '/api';
 const USE_MOCK_FALLBACK = true; // Enable mock fallback when API is unavailable
 
@@ -205,8 +192,8 @@ export function getJobTitles(): Promise<ApiJobTitle[]> {
 }
 
 // --- User Profile ---
-export function updateUserProfile(id: string, data: { job_title?: string; name?: string; phone?: string }): Promise<any> {
-  return fetchJson<any>(`/users/${id}`, {
+export function updateUserProfile(id: string, data: { job_title?: string; name?: string; phone?: string }): Promise<unknown> {
+  return fetchJson<unknown>(`/users/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });

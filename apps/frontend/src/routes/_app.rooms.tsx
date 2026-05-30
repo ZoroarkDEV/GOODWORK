@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Search, Users, MapPin, Wifi, Monitor, PencilRuler, Coffee, Wind, Phone, Video } from "lucide-react";
+import { Search, Users, Wifi, Monitor, PencilRuler, Coffee, Wind, Phone, Video } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { getRooms, type ApiRoom } from "@/lib/api";
+import { getRooms } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/rooms")({
   component: RoomsPage,

@@ -27,5 +27,8 @@
   },
   "overrides": {
     "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "react-is": "^19.2.6"
   }
 }

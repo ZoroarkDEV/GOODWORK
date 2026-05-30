@@ -40,12 +40,36 @@ const DEMO_CREDENTIALS = [
   { email: "gerente@goodwork.com", password: "manager123", role: "manager" as Role, name: "Gerente Operacional" },
 ];
 
-function mapSupabaseUser(supabaseUser: any, role: Role = "user"): GWUser {
+function mapSupabaseUser(supabaseUser: { id: string; email?: string; user_metadata?: { name?: string; role?: string }; email_confirmed_at?: string | null }, role: Role = "user"): GWUser {
   return {
     id: supabaseUser.id,
     email: supabaseUser.email || "",
     name: supabaseUser.user_metadata?.name || supabaseUser.email?.split("@")[0] || "Usuário",
-    role: supabaseUser.user_metadata?.role || role,
+    role: (supabaseUser.user_metadata?.role as Role) || role,
+    emailVerified: !!supabaseUser.email_confirmed_at,
+  };
+}
+
+async function fetchUserProfile(supabaseUser: { id: string; email?: string; user_metadata?: { name?: string; role?: string }; email_confirmed_at?: string | null }): Promise<GWUser> {
+  let role: Role = (supabaseUser.user_metadata?.role as Role) || "user";
+
+  if (!supabaseUser.user_metadata?.role) {
+    const { data: dbUser } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", supabaseUser.id)
+      .single();
+    
+    if (dbUser?.role) {
+      role = dbUser.role as Role;
+    }
+  }
+
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email || "",
+    name: supabaseUser.user_metadata?.name || supabaseUser.email?.split("@")[0] || "Usuário",
+    role,
     emailVerified: !!supabaseUser.email_confirmed_at,
   };
 }
@@ -57,9 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Listen to auth state changes
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        fetchUserProfile(session.user);
+        const gwUser = await fetchUserProfile(session.user);
+        setUser(gwUser);
+        setLoading(false);
       } else {
         setLoading(false);
       }
@@ -69,7 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          await fetchUserProfile(session.user);
+          const gwUser = await fetchUserProfile(session.user);
+          setUser(gwUser);
+          setLoading(false);
         } else {
           setUser(null);
           setLoading(false);
@@ -79,37 +107,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  async function fetchUserProfile(supabaseUser: any) {
-    try {
-      let role: Role = supabaseUser.user_metadata?.role || "user";
-
-      if (!supabaseUser.user_metadata?.role) {
-        const { data: dbUser } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", supabaseUser.id)
-          .single();
-        
-        if (dbUser?.role) {
-          role = dbUser.role as Role;
-        }
-      }
-
-      setUser({
-        id: supabaseUser.id,
-        email: supabaseUser.email || "",
-        name: supabaseUser.user_metadata?.name || supabaseUser.email?.split("@")[0] || "Usuário",
-        role,
-        emailVerified: !!supabaseUser.email_confirmed_at,
-      });
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-      setUser(mapSupabaseUser(supabaseUser));
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const signIn: AuthCtx["signIn"] = useCallback(async ({ email, password }) => {
     // CORREÇÃO 3: Mock bypass for presentation
@@ -160,12 +157,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { error: null };
-    } catch (error: any) {
-      // CORREÇÃO 2: Clean up on connection error
+    } catch {
       localStorage.removeItem("goodwork_token");
       localStorage.removeItem("goodwork_user");
       setUser(null);
-      
       return { error: "Erro de conexão com o servidor." };
     }
   }, []);
@@ -188,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const errorMessages: Record<string, string> = {
           "User already registered": "Este e-mail já está cadastrado.",
           "Invalid email": "Formato de e-mail inválido.",
-          "Password should be at least 6 characters": "A senha deve ter no mínimo 6 caracteres.",
+          "Password should be at least 6 caracteres": "A senha deve ter no mínimo 6 caracteres.",
           "Too many requests": "Muitas tentativas. Aguarde alguns minutos.",
         };
         return { error: errorMessages[error.message] || error.message };
@@ -196,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const needsVerification = !data.session;
       return { error: null, needsEmailVerification: needsVerification };
-    } catch (error: any) {
+    } catch {
       return { error: "Erro de conexão com o servidor." };
     }
   }, []);

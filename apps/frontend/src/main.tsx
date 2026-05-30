@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { StrictMode, useEffect, useState } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -32,8 +31,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-const AnyToaster = Toaster as any
-
 function App() {
   return (
     <StrictMode>
@@ -41,7 +38,7 @@ function App() {
         <AuthProvider>
           <RouterProvider router={router} />
           <PresenceConfirmationModal />
-          <AnyToaster
+          <Toaster
             position="top-right"
             theme="dark"
             toastOptions={{

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Search, Plus, Package as PackageIcon, ArrowDownUp, AlertTriangle } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
-import { supplies as initial, consumptionTrend, type Supply } from "@/lib/mock-data";
+import { supplies as initial, consumptionTrend, type Supply } from "@/mocks/data";
 
 export const Route = createFileRoute("/_app/supplies")({
   component: SuppliesPage,

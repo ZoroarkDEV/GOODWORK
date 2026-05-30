@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Bell, ChevronDown, Menu, LogOut, User, Settings as SettingsIcon, ShieldCheck, UserRound, ArrowLeftRight } from "lucide-react";
+import { Search, Bell, ChevronDown, Menu, LogOut, User, Settings as SettingsIcon, ShieldCheck, UserRound } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";

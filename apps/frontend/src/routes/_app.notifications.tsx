@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { getNotifications, markNotificationRead, type ApiNotification } from "@/lib/api";
+import { mockNotifications } from "@/mocks/data";
 
 export const Route = createFileRoute("/_app/notifications")({
   component: NotificationsPage,
@@ -33,10 +34,11 @@ function NotificationsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: notifications = [], isLoading, error } = useQuery({
+  const { data: notifications = mockNotifications as any[], isLoading, error } = useQuery({
     queryKey: ["notifications", user?.id],
     queryFn: () => getNotifications(user!.id),
     enabled: !!user,
+    placeholderData: mockNotifications,
   });
 
   const markAsRead = useMutation({

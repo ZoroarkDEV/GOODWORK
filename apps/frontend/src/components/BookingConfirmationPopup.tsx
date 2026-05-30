@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CalendarCheck, Clock, MapPin, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -88,6 +88,11 @@ export function BookingConfirmationPopup() {
     setShowPopup(false);
   }
 
+  const minutesUntilBooking = useMemo(() => {
+    if (!booking) return 0;
+    return Math.round((booking.startTime.getTime() - Date.now()) / 60000);
+  }, [booking, showPopup]);
+
   if (!user || !booking) return null;
 
   return (
@@ -147,9 +152,9 @@ export function BookingConfirmationPopup() {
               </div>
 
               <p className="text-xs text-muted-foreground text-center">
-                Sua reserva começa em{" "}
+                  Sua reserva começa em{" "}
                 <strong className="text-foreground">
-                  {Math.round((booking.startTime.getTime() - Date.now()) / 60000)} minutos
+                  {minutesUntilBooking} minutos
                 </strong>
                 . Confirme sua presença para manter a sala.
               </p>

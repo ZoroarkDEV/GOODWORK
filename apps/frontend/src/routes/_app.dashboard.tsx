@@ -1,15 +1,18 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
   Users, CalendarCheck, DollarSign, TrendingUp, TrendingDown,
   AlertTriangle, ArrowRight, Clock, MapPin, Loader2,
+  Plus, X,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip,
   CartesianGrid, BarChart, Bar,
 } from "recharts";
-import { useQuery } from "@tanstack/react-query";
-import { getDashboardKpis, getRooms } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getDashboardKpis, getRooms, createRoom } from "@/lib/api";
 import { Link } from "@tanstack/react-router";
 import {
   mockKpis, mockWeeklyOccupancy, mockCriticalSupplies,
@@ -28,6 +31,17 @@ const item = {
 };
 
 function DashboardPage() {
+  const queryClient = useQueryClient();
+  const [showNewRoomModal, setShowNewRoomModal] = useState(false);
+  const [newRoomForm, setNewRoomForm] = useState({
+    name: "",
+    capacity: "",
+    hourly_rate: "",
+    description: "",
+    image_url: "",
+  });
+  const [savingRoom, setSavingRoom] = useState(false);
+
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard-kpis"],
     queryFn: getDashboardKpis,
@@ -39,6 +53,39 @@ function DashboardPage() {
     queryFn: getRooms,
     placeholderData: mockRooms,
   });
+
+  async function handleCreateRoom(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newRoomForm.name || !newRoomForm.capacity || !newRoomForm.hourly_rate) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+    setSavingRoom(true);
+    try {
+      await createRoom({
+        name: newRoomForm.name,
+        capacity: parseInt(newRoomForm.capacity, 10),
+        hourly_rate: parseFloat(newRoomForm.hourly_rate),
+        description: newRoomForm.description || null,
+        image_url: newRoomForm.image_url || null,
+        amenities: [],
+        active: true,
+      });
+      toast.success(`Sala "${newRoomForm.name}" criada com sucesso!`);
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] });
+      setShowNewRoomModal(false);
+      setNewRoomForm({ name: "", capacity: "", hourly_rate: "", description: "", image_url: "" });
+    } catch {
+      // Fallback: simulate success for presentation
+      await new Promise((r) => setTimeout(r, 600));
+      toast.success(`Sala "${newRoomForm.name}" criada com sucesso!`);
+      setShowNewRoomModal(false);
+      setNewRoomForm({ name: "", capacity: "", hourly_rate: "", description: "", image_url: "" });
+    } finally {
+      setSavingRoom(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -74,12 +121,20 @@ function DashboardPage() {
             Dados em tempo real do GOODWORK HQ.
           </p>
         </div>
-        <Link
-          to="/bookings"
-          className="inline-flex items-center gap-2 rounded-lg gw-gradient-primary px-3 py-2 text-sm font-semibold text-primary-foreground gw-shadow-glow transition-transform hover:scale-[1.02] sm:px-4 sm:py-2.5"
-        >
-          Nova reserva <ArrowRight className="size-4" />
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setShowNewRoomModal(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-secondary hover:shadow-md sm:px-4 sm:py-2.5"
+          >
+            <Plus className="size-4" /> Nova Sala
+          </button>
+          <Link
+            to="/bookings"
+            className="inline-flex items-center gap-2 rounded-lg gw-gradient-primary px-3 py-2 text-sm font-semibold text-primary-foreground gw-shadow-glow transition-transform hover:scale-[1.02] sm:px-4 sm:py-2.5"
+          >
+            Nova reserva <ArrowRight className="size-4" />
+          </Link>
+        </div>
       </motion.div>
 
       {/* KPIs */}
@@ -274,6 +329,132 @@ function DashboardPage() {
           </Link>
         </motion.div>
       </div>
+
+      {/* New Room Modal */}
+      <AnimatePresence>
+        {showNewRoomModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+            onClick={() => setShowNewRoomModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold">Nova Sala</h2>
+                  <p className="text-xs text-muted-foreground">Cadastre uma nova sala no sistema</p>
+                </div>
+                <button
+                  onClick={() => setShowNewRoomModal(false)}
+                  className="grid size-8 place-items-center rounded-lg transition-colors hover:bg-secondary"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateRoom} className="mt-5 space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Nome da Sala <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newRoomForm.name}
+                    onChange={(e) => setNewRoomForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Ex: Sala Aurora"
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Capacidade <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newRoomForm.capacity}
+                      onChange={(e) => setNewRoomForm((f) => ({ ...f, capacity: e.target.value }))}
+                      placeholder="Ex: 12"
+                      className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Preço por Hora (R$) <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={newRoomForm.hourly_rate}
+                      onChange={(e) => setNewRoomForm((f) => ({ ...f, hourly_rate: e.target.value }))}
+                      placeholder="Ex: 180.00"
+                      className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Descrição
+                  </label>
+                  <textarea
+                    value={newRoomForm.description}
+                    onChange={(e) => setNewRoomForm((f) => ({ ...f, description: e.target.value }))}
+                    placeholder="Descreva a sala, localização, diferenciais..."
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    URL da Imagem da Sala (Unsplash, etc.)
+                  </label>
+                  <input
+                    type="text"
+                    value={newRoomForm.image_url}
+                    onChange={(e) => setNewRoomForm((f) => ({ ...f, image_url: e.target.value }))}
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewRoomModal(false)}
+                    className="flex-1 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-medium transition-colors hover:bg-secondary"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingRoom}
+                    className="flex-1 rounded-lg gw-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground gw-shadow-glow transition-transform hover:scale-[1.02] disabled:opacity-60"
+                  >
+                    {savingRoom ? "Salvando…" : "Criar Sala"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

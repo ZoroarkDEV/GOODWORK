@@ -2,7 +2,6 @@
  * PresenceConfirmationModal - Modal de confirmação de presença.
  * Atalho: Alt+P para abrir durante a apresentação.
  */
-// @ts-nocheck
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
