@@ -17,9 +17,39 @@ services:
     networks:
       - goodwork-network
 
-volumes:
-  postgres_data:
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: goodwork-backend
+    restart: always
+    env_file:
+      - ./apps/backend/.env.example
+    environment:
+      DATABASE_URL: postgresql://goodwork_admin:goodwork_secure_pass@postgres:5432/goodwork_db
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - goodwork-network
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile.frontend
+    container_name: goodwork-frontend
+    restart: always
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+    networks:
+      - goodwork-network
 
 networks:
   goodwork-network:
     driver: bridge
+
+volumes:
+  postgres_data:

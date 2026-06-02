@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE = 'http://localhost:3000'; // Backend base URL
 const USE_MOCK_FALLBACK = true; // Enable mock fallback when API is unavailable
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
