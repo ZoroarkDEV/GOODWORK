@@ -3,6 +3,8 @@
 > **Plataforma SaaS Premium de Gerenciamento de Coworking**
 >
 > Uma solução ponta a ponta focada em agendamento inteligente de salas, gestão operacional de suprimentos, KPIs gerenciais avançados, automação de notificações e uma experiência de usuário (UX/UI) moderna e premium.
+>
+> 🎥 **Vídeo de Apresentação:** Assista ao projeto em funcionamento no [YouTube](https://youtu.be/OCKlNI3LFtQ).
 
 ---
 ## 📌 Visão Executiva e Recursos Core
