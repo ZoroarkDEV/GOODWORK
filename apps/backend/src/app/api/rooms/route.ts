@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // --- Room Schema Definition (Based on README) ---
 interface Room {
@@ -46,6 +47,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const { error, user } = await requireAuth(request, ['admin', 'manager']);
+  if (error) return error;
+
   try {
     const body = await request.json();
     const { name, description, capacity, hourly_rate, image_url, amenities } = body;

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { requireAuth } from '@/lib/auth-middleware';
 
 export async function GET(
   request: Request,
@@ -31,6 +32,9 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { error } = await requireAuth(request, ['admin', 'manager']);
+  if (error) return error;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -112,6 +116,9 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { error } = await requireAuth(request, ['admin']);
+  if (error) return error;
+
   try {
     const { id } = await params;
 

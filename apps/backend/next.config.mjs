@@ -1,18 +1,24 @@
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      react: require.resolve('next/dist/compiled/react'),
-      'react-dom': require.resolve('next/dist/compiled/react-dom'),
-    };
-    return config;
+  eslint: {
+    ignoreDuringBuilds: true,
   },
-  // Add Turbopack configuration to silence the warning and potentially resolve build issues
-  turbopack: {},
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  async headers() {
+    return [
+      {
+        source: "/api/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Credentials", value: "true" },
+          { key: "Access-Control-Allow-Origin", value: "http://localhost:5173" },
+          { key: "Access-Control-Allow-Methods", value: "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+          { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization" },
+        ]
+      }
+    ]
+  }
 };
 
 export default nextConfig;

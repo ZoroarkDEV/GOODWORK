@@ -221,7 +221,7 @@ VALUES (
     150.00,
     '/images/rooms/room-01/cover.webp',
     '["tv", "wifi", "videoconferencia", "quadro", "cafeteira"]'::jsonb
-) ON CONFLICT (id) DO NOT NOTHING;
+) ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO rooms (id, name, description, capacity, hourly_rate, image_url, amenities)
 VALUES (

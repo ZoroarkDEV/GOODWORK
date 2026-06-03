@@ -1,10 +1,16 @@
-const API_BASE = 'http://localhost:3000'; // Backend base URL
+const API_BASE = 'http://localhost:3000/api'; // Backend base URL
 const USE_MOCK_FALLBACK = true; // Enable mock fallback when API is unavailable
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = localStorage.getItem('goodwork_token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
   try {
     const res = await fetch(`${API_BASE}${url}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       ...options,
     });
     if (!res.ok) {
@@ -13,10 +19,6 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     }
     return res.json();
   } catch (error) {
-    // If API fails and mock fallback is enabled, throw to trigger mock in components
-    if (USE_MOCK_FALLBACK) {
-      throw error; // Let components handle with mock fallback
-    }
     throw error;
   }
 }
@@ -78,6 +80,7 @@ export interface ApiBooking {
   status: 'pending' | 'confirmed' | 'canceled' | 'finished';
   notes: string | null;
   created_at?: string;
+  calendar_link?: string;
 }
 
 export function getBookings(): Promise<ApiBooking[]> {
@@ -108,6 +111,10 @@ export function cancelBooking(id: string): Promise<{ message: string }> {
   return fetchJson<{ message: string }>(`/bookings/${id}`, {
     method: 'DELETE',
   });
+}
+
+export function confirmBooking(id: string): Promise<ApiBooking> {
+  return fetchJson<ApiBooking>(`/bookings/${id}/confirm`, { method: 'PATCH' });
 }
 
 // --- Dashboard KPIs ---

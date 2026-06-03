@@ -34,7 +34,7 @@ Este projeto adota **commits em inglês** como padrão. A escolha alinha o repos
 | **UI** | Tailwind CSS v4 + Framer Motion | Design system premium com animações |
 | **Infraestrutura** | Docker + Docker Compose | Padronização e isolamento do ambiente |
 
-### Arquitetura de Autenticação
+### Arquitetura de Autenticação e Segurança
 
 O sistema utiliza autenticação customizada com bcrypt para hash de senhas e tokens base64 para sessão. O fluxo é:
 
@@ -42,6 +42,8 @@ O sistema utiliza autenticação customizada com bcrypt para hash de senhas e to
 2. **Login** → `POST /api/auth/login` — valida credenciais e retorna token + dados do usuário.
 3. **Sessão** → Token e dados do usuário armazenados em `localStorage`.
 4. **Autorização** — Roles (`user`, `manager`, `admin`) controlam acesso a rotas e funcionalidades.
+5. **Middleware de Segurança** — Acesso a endpoints protegidos (ex: criação de salas) é validado pelo middleware customizado [requireAuth](file:///c:/Users/jose.valentim/Documents/GOODWORK/apps/backend/src/lib/auth-middleware.ts) a partir do header `Authorization: Bearer <token>`.
+6. **Configuração de CORS** — O backend libera chamadas de origem cruzada a partir do frontend local (`http://localhost:5173`) via políticas declaradas em [next.config.mjs](file:///c:/Users/jose.valentim/Documents/GOODWORK/apps/backend/next.config.mjs).
 
 > ⚠️ **Nota:** O projeto não depende mais do Supabase. Toda a persistência é feita via PostgreSQL local com driver `pg`.
 
@@ -232,9 +234,10 @@ docker ps | grep goodwork-postgres
 | `DELETE` | `/api/rooms/:id` | Inativar sala (soft delete) |
 | `GET` | `/api/rooms/:id/availability` | Verificar disponibilidade |
 | `GET` | `/api/bookings` | Listar reservas |
-| `POST` | `/api/bookings` | Criar reserva |
+| `POST` | `/api/bookings` | Criar reserva (com geração de link Google Calendar e disparo de e-mail stub) |
 | `PUT` | `/api/bookings/:id` | Atualizar reserva |
 | `DELETE` | `/api/bookings/:id` | Cancelar reserva |
+| `PATCH` | `/api/bookings/:id/confirm` | Confirmar presença em reserva pendente |
 | `GET` | `/api/dashboard/kpis` | KPIs do dashboard |
 | `GET` | `/api/notifications?user_id=:id` | Listar notificações |
 | `POST` | `/api/notifications` | Criar notificação |
@@ -294,6 +297,11 @@ VITE_API_URL=http://localhost:3000/api
 - [x] Adicionar dados mock para apresentação sem backend
 - [x] Modal de confirmação de presença (Alt+P)
 - [x] Login com fallback mock
+- [x] Middleware de autenticação customizado (`requireAuth`)
+- [x] Habilitação de CORS no backend para requisições de origem cruzada do front local
+- [x] Fluxo de confirmação de presença integrado no front (Status Pendente -> Confirmado)
+- [x] Geração dinâmica de link de agendamento para Google Calendar
+- [x] Serviço estruturado para envio de e-mails de agendamento (Simulação via Log/Console)
 - [ ] Implementar CI/CD com GitHub Actions
 - [ ] Adicionar JWT com assinatura adequada (substituir token base64)
 - [ ] Adicionar refresh tokens

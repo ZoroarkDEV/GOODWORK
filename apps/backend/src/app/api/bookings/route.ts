@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db'; // Using the existing DB query function
+import { sendBookingConfirmationEmail } from '@/lib/email';
 
 // --- Booking Schema Definition (Based on README) ---
 interface Booking {
@@ -108,10 +109,29 @@ export async function POST(request: Request) {
       );
     }
 
-    // Calculate total price (assuming hourly_rate is fetched from rooms table, but not done here for simplicity)
-    // For now, a placeholder price. In a real app, fetch room's hourly_rate.
+    // Calculate total price based on database room hourly_rate
+    const roomResult = await query(
+      'SELECT hourly_rate, name FROM rooms WHERE id = $1 AND active = TRUE',
+      [room_id]
+    );
+    if (roomResult.rows.length === 0) {
+      return NextResponse.json({ error: 'Sala não encontrada ou inativa.' }, { status: 404 });
+    }
+    const hourlyRate = parseFloat(roomResult.rows[0].hourly_rate);
+    const roomName = roomResult.rows[0].name;
     const estimatedDurationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-    const totalPrice = estimatedDurationHours * 100; // Placeholder rate
+    const totalPrice = estimatedDurationHours * hourlyRate;
+
+    // Garantir que o user_id existe na tabela local 'users' para não violar a constraint de chave estrangeira
+    const userCheck = await query('SELECT id FROM users WHERE id = $1', [user_id]);
+    if (userCheck.rows.length === 0) {
+      await query(
+        `INSERT INTO users (id, name, email, role, active, email_verified)
+         VALUES ($1, $2, $3, 'user', TRUE, TRUE)
+         ON CONFLICT (id) DO NOTHING`,
+        [user_id, 'Usuário GOODWORK', `user_${user_id}@goodwork.com`]
+      );
+    }
 
     const insertQuery = `
       INSERT INTO bookings (room_id, user_id, start_time, end_time, total_price, status, notes)
@@ -130,15 +150,28 @@ export async function POST(request: Request) {
 
     const newBooking = result.rows[0];
 
-    // TODO: Trigger notifications (e.g., to user, manager)
-    // For now, we'll stub this out. In a real application, this would involve sending emails or other alerts.
-    console.log(`Notification: New booking created for room ${room_id} by user ${user_id}.`);
+    // Fire-and-forget — não bloqueia a resposta
+    query('SELECT name, email FROM users WHERE id = $1', [user_id])
+      .then(async (userResult) => {
+        if (userResult.rows.length > 0) {
+          const { name, email } = userResult.rows[0];
+          await sendBookingConfirmationEmail({
+            toEmail: email,
+            toName: name,
+            roomName: roomName, // variável da Sprint 3
+            startTime: startTime.toISOString(),
+            endTime: endTime.toISOString(),
+            totalPrice: totalPrice,
+            bookingId: newBooking.id,
+          });
+        }
+      })
+      .catch((err) => console.error('[BOOKING] Falha no email:', err));
 
-    // TODO: Integrate with Google Calendar API
-    // For now, we'll stub this out. In a real application, this would involve calling the Google Calendar API.
-    console.log(`Google Calendar: Booking for room ${room_id} from ${startTime.toISOString()} to ${endTime.toISOString()} needs to be added.`);
+    const fmt = (iso: string) => iso.replace(/[-:]/g, '').replace('.000Z', 'Z');
+    const calendarLink = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`Reserva GOODWORK — ${roomName}`)}&dates=${fmt(startTime.toISOString())}/${fmt(endTime.toISOString())}&location=${encodeURIComponent('GOODWORK Coworking')}&ctz=America%2FSao_Paulo`;
 
-    return NextResponse.json(newBooking, { status: 201 });
+    return NextResponse.json({ ...newBooking, calendar_link: calendarLink }, { status: 201 });
 
   } catch (error: any) {
     console.error('Error creating booking:', error);

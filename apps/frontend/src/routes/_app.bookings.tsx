@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Plus, ChevronLeft, ChevronRight, X, Clock, MapPin, Calendar } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getBookings, createBooking, cancelBooking, getRooms, type ApiRoom } from "@/lib/api";
+import { getBookings, createBooking, cancelBooking, confirmBooking, getRooms, type ApiRoom } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/bookings")({
@@ -33,10 +33,25 @@ function BookingsPage() {
 
   const createMutation = useMutation({
     mutationFn: createBooking,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       setOpen(false);
-      toast.success("Reserva criada com sucesso!");
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span>Reserva criada com sucesso!</span>
+          {data.calendar_link && (
+            <a
+              href={data.calendar_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs underline text-blue-400"
+            >
+              📅 Adicionar ao Google Calendar
+            </a>
+          )}
+        </div>,
+        { duration: 8000 }
+      );
     },
     onError: (err: Error) => {
       toast.error(err.message || "Erro ao criar reserva");
@@ -51,6 +66,17 @@ function BookingsPage() {
     },
     onError: (err: Error) => {
       toast.error(err.message || "Erro ao cancelar reserva");
+    },
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: confirmBooking,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      toast.success("✅ Presença confirmada!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao confirmar");
     },
   });
 
@@ -202,6 +228,15 @@ function BookingsPage() {
                       {b.status === "confirmed" ? "Confirmada" : b.status === "pending" ? "Pendente" : b.status === "canceled" ? "Cancelada" : "Finalizada"}
                     </span>
                   </div>
+                  {b.status === "pending" && (
+                    <button
+                      onClick={() => confirmMutation.mutate(b.id)}
+                      disabled={confirmMutation.isPending}
+                      className="rounded-md border border-border bg-surface px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium text-success hover:bg-success/10 disabled:opacity-50"
+                    >
+                      {confirmMutation.isPending ? "Confirmando…" : "Confirmar presença"}
+                    </button>
+                  )}
                   {(b.status === "pending" || b.status === "confirmed") && (
                     <button
                       onClick={() => cancelMutation.mutate(b.id)}
